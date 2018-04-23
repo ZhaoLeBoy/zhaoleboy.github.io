@@ -5,8 +5,8 @@ header-img: img/home-bg.jpg
 email: zhaolestyle@icloud.com
 description: ""
 keyword: ""
-url: ""              # your host, for absolute URL  http://huangxuan.me
-baseurl: "/zhaole"         # for example, '/blog' if your blog hosted on 'host/blog'
+url: "https://zhaoleboy.github.io/"              # your host, for absolute URL  http://huangxuan.me
+baseurl: "/"         # for example, '/blog' if your blog hosted on 'host/blog'
 
 
 
