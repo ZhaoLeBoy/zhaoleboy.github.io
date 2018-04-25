@@ -1,8 +1,8 @@
 ---
 layout:     post
-title:      "一.高并发基础"
-subtitle:   "一些高并发的基础"
-date:       2018-04-24 12:00:00
+title:      "二.线程安全"
+subtitle:   "线程安全的一些信息"
+date:       2018-04-25 04:00:00
 author:     "ZhaoLe"
 header-img: "img/post-bg-2015.jpg"
 tags:
@@ -13,117 +13,260 @@ tags:
 
 参考慕课网[并发课程](https://coding.imooc.com/class/195.html)做的笔记
 
-### 并发的基本概念
+当多个线程访问某个类时候，不管运行时环境采取任何调度方式或者这些进程如何交替执行，并且在主调代码中不需要任何额外的同步或者协同，这个类都能变现出正确行为，那么称这个类就是线程安全的
 
-同时拥有两个或者多个线程，如果程序在单核处理器上运行，多个线程将交替的替换或者换出内存，这些线程是同时‘存在‘的，每个线程都处于执行过程中的某个状态，如果运行在多核处理器上，此时程序中的每个线程都将分配到一个处理器核上，因此可以同时运行。
+1. 原子性：提供了互斥访问，同一时刻只能有一个线程来对他进行操作。
+2. 可见性：一个线程对主内存的修改可以及时的被其他线程观察到。
+3. 有序性：一个线程观察其他线程中的指令执行顺序，由于指令重  拍顺序的存在，该观察结果一般杂乱无章。
 
-### CPU多级缓存
-cpu频率分常快，主存跟不上，这样在处理器的时钟周期内，cpu常常需要等待主存，浪费时间，所有有cache出现。为了缓解cpu和内存之间速度不匹配问题(cpu->cache->memory)
+### 原子性-Atomic包
+在`java.util.concurrent.atomic`并且`unsafe类提供了硬件级别的原子操作`
 
-### CPU cache有什么意义
-1. 时间局部性：如果某个数据被访问，那么在不就的将来它很可能被再次访问。
-2. 空间局部性：如果某个数据被访问，那么与它相邻的数据很快也会被访问。
+* `AtomicInteger.getAndIncrement`的源码
 
-### CPU多级缓存-缓存一致性(MESI)
-* 用于保证多个cpu cache之间缓存共享数据的一致,mesi是代表四种缓存状态。任何缓存段都处于这四种状态之一
+```java
+ /**
+  * 获取底层当前的值并且+1
+  * @param var1 需要操作的AtomicInteger 对象
+  * @param var2 当前的值 
+  * @param var4 要增加的值
+  */
+  public final int getAndAddInt(Object var1, long var2, int var4) {
+      int var5;
+      do {
+          // 获取底层的该对象当前的值
+          var5 = this.getIntVolatile(var1, var2);
+          //获取完底层的值和自增操作之间，可能系统的值已经又被其他线程改变了
+          //如果底层的值var5 等于var2则做var5+var4的操作  
+          //如果又被改变了，则重新计算系统底层的值，并重新执行本地方法
+      } while(!this.compareAndSwapInt(var1, var2, var5, var5 + var4)); 
 
-1. M: Modified 修改状态，指的是该缓存行只被缓存在该CPU的缓存中，并且是被修改过的，因此他与主存中的数据是不一致的，该缓存行中的数据需要在未来的某个时间点（允许其他CPU读取主存相应中的内容之前）写回主存，然后状态变成E（独享）
-2. E：Exclusive 独占态享 缓存行只被缓存在该CPU的缓存中，是未被修改过的，与主存的数据是一致的，可以在任何时刻当有其他CPU读取该内存时，变成S（共享）状态状态，当CPU修改该缓存行的内容时，变成M（被修改）的状态
-3. S：Share 共享状态，意味着该缓存行可能会被多个CPU进行缓存，并且该缓存中的数据与主存数据是一致的，当有一个CPU修改该缓存行时，其他CPU是可以被作废的，变成I(无效的)
-4. I：Invalid 无效状态，代表这个缓存是无效的，可能是有其他CPU修改了该缓存行
+      return var5;
+  }
+```
 
-* 在一个典型的多核系统中，每一个核都会有自己的缓存来共享主存总线，每一个CPU会发出读写（I/O）请求，而缓存的目的是为了减少CPU读写共享主存的次数,一个缓存除了在Invaild状态，都可以满足CPU 的读请求
-* 一个写请求只有在M状态，或者E状态的时候才能给被执行，如果是处在S状态的时候，他必须先将该缓存行变成I状态，
-这个操作通常作用于广播的方式来完成，这个时候他既不允许不同的CPU同时修改同一个缓存行，即使是修改同一个缓存行中不同端的数据也是不可以的，这里主要解决的是缓存一致性的问题，
-* 一个M状态的缓存行必须时刻监听所有试图读该缓存行相对主存的操作，这种操作必须在缓存该缓存行被写会到主存，并将状态变成S状态之前，被延迟执行
-* 一个处于S状态的缓存行，也必须监听其他缓存使该缓存行无效，或者独享该缓存行的请求，并将缓存行变成无效
-* 一个处于E状态的缓存行，他要监听其他缓存读缓存行的操作，一旦有，那么他讲变成S状态
+* AtomicLong、LongAdder(JDK1.8+)
 
-因此对于M和E状态，他们的数据总是一致的与缓存行的真正状态总是保持一致的，
-但是S状态可能是非一致的，如果一个缓存将处于S状态的 缓存行作废了，另一个缓存可能已经独享了该缓存行，
-但是该缓存却不会将该缓存行升迁为E状态，这是因为其他缓存不会广播他们已经作废掉该缓存行的通知，
-同样由于缓存并没有保存该缓存行被COPY的数量，因此没有办法确定是否独享了改缓存行，
-这是一种投机性的优化，因为如果一个CPU想修改一个处于S状态的缓存行，总线需要将所有使用该缓存行的COPY的值变成Invaild状态才可以，而修改E状态的缓存 却不需要这样做。
+我们看到AtomicLong在执行CAS操作的时候，是用死循环的方式，如果竞争非常激烈，那么失败量就会很高，性能会受到影响。所以AtomicLong适合低并发
 
-### CPU多级缓存的乱序执行优化
-处理器为提高运算速度而做出违背代码原有顺序的优化,会导致的一个问题，如果我们不做任何处理，在多核的情况下，的实际结果可能和逻辑运行结果大不相同，如果在一个核上执行数据写入操作，并在最后执行一个操作来标记数据已经写入好了，而在另外一个核上通过该标记位判定数据是否已经写入，这时候就可能出现不一致，标记位先被写入，但是实际的操作缺并未完成，这个未完成既有可能是没有计算完成，也有可能是缓存没有被及时刷新到主存之中，使得其他核读到了错误的数据。
+再看一下1.8以后的LongAdder
+
+```java
+ public void add(long x) {
+    Cell[] as; long b, v; int m; Cell a;
+    if ((as = cells) != null || !casBase(b = base, b + x)) {
+        boolean uncontended = true;
+        if (as == null || (m = as.length - 1) < 0 ||
+            (a = as[getProbe() & m]) == null ||
+            !(uncontended = a.cas(v = a.value, v + x)))
+            longAccumulate(x, null, uncontended);
+    }
+}
+```
+
+jvm对long，double这些64位的变量拆成两个32位的操作
+
+> LongAdder的设计思想：核心是将热点数据分离，将内部数据value分成一个数组，每个线程访问时，通过hash等算法映射到其中一个数字进行技术，而最终计数结果为这个数组的求和累加，其中热点数据value会被分离成多个热点单元的数据cell，每个cell独自维护内部的值，当前value的实际值由所有的cell累积合成，从而使热点进行了有效的分离，提高了并行度。
+> 
+* 优点:LongAdder 在低并发的时候通过直接操作base，可以很好的保证和Atomic的性能基本一致，在高并发的场景，通过热点分区（将单点的跟新压力分散到个各个节点上）来提高并行度。
+* 缺点：在统计的时候如果有并发更新，可能会导致结果有些误差，所以需要准确的数值，例如序列号生成还是AtomicLong是好的选择。
+
+* AtomicReference、AtomicReferenceFieldUpdater (不是特别重点)
+ 
+ `AtomicReference: 用法同AtomicInteger一样，但是可以放各种对象`
+ 
+ ```java
+	@ThreadSafe
+	@Slf4j
+	public class AtomicExample4 {
+	    private static AtomicReference<Integer> count = new AtomicReference(0);
+	
+	    public static void main(String[] args) {
+	        count.compareAndSet(0, 2);
+	        count.compareAndSet(0, 1);
+	        count.compareAndSet(1, 3);
+	        count.compareAndSet(2, 4);
+	        count.compareAndSet(3, 5);
+	        log.info("count {}", count.get());
+	    }
+	}
+ ```
+ 
+* AtomicReferenceFieldUpdater
+
+```java
+@ThreadSafe
+@Slf4j
+public class AtomicExample5 {
+
+    /**
+     * AtomicIntegerFieldUpdater 核心是原子性的去更新某一个类的实例的指定的某一个字段
+     * 构造函数第一个参数为类定义，第二个参数为指定字段的属性名，必须是volatile修饰并且非static的字段
+     */
+    private static AtomicIntegerFieldUpdater<AtomicExample5> updater =
+            AtomicIntegerFieldUpdater.newUpdater(AtomicExample5.class, "count");
+
+    @Getter
+    public volatile int count = 100;
+
+    public static void main(String[] args) {
+
+        AtomicExample5 example5 = new AtomicExample5();
+        if (updater.compareAndSet(example5, 100, 120)) {
+            log.info("update success1 {}", example5.getCount());
+        }
+
+        if (updater.compareAndSet(example5, 100, 120)) {
+            log.info("update success2 {}", example5.getCount());
+        } else {
+            log.info("update failed {}", example5.getCount());
+        }
+        // 1.success 1  2.failed 
+    }
+}
+```
+
+* AtomicStampReference:
+
+ABA问题：在CAS操作的时候，其他线程将变量的值A改成了B由改成了A，本线程使用期望值A与当前变量进行比较的时候，发现A变量没有变，于是CAS就将A值进行了交换操作，这个时候实际上A值已经被其他线程改变过，这与设计思想是不符合的
+
+解决思路：每次变量更新的时候，把变量的版本号加一，这样只要变量被某一个线程修改过，该变量版本号就会发生递增操作，从而解决了ABA变化
+
+```java
+/**
+ * Atomically sets the value of both the reference and stamp
+ * to the given update values if the
+ * current reference is {@code ==} to the expected reference
+ * and the current stamp is equal to the expected stamp.
+ *
+ * @param expectedReference the expected value of the reference
+ * @param newReference the new value for the reference
+ * @param expectedStamp the expected value of the stamp(上面提到的版本号)
+ * @param newStamp the new value for the stamp
+ * @return {@code true} if successful
+ */
+public boolean compareAndSet(V   expectedReference,
+                             V   newReference,
+                             int expectedStamp,
+                             int newStamp) {
+    Pair<V> current = pair;
+    return
+        expectedReference == current.reference &&
+        expectedStamp == current.stamp &&
+        ((newReference == current.reference &&
+          newStamp == current.stamp) ||
+         casPair(current, Pair.of(newReference, newStamp)));
+}
+```
 
 
-### Java内存模型（Java Memory Model，JMM）
-**JAVA内存模型规范**
-1. 规定了一个线程如何和何时可以看到其他线程修改过后的共享变量的值。
-2. 如何以及何时同步的访问共享变量。
+* AtomicLongArray
+可以指定更新一个数组指定索引位置的值.具体见源码
 
-**JAVA内存模型**
+* AtomicBoolean(平时用的比较多)
+compareAndSet方法也值得注意，可以达到同一时间只有一个线程执行这段代码
 
-![JAVA内存模型][image-4]
+### 原子性-锁
 
-* Heap(堆)：java里的堆是一个运行时的数据区，堆是由垃圾回收来负责的，堆的优势是可以动态的分配内存大小，生存期也不必事先告诉编译器，因为他是在运行时动态分配内存的，java的垃圾回收器会定时收走不用的数据，缺点是由于要在运行时动态分配，所有存取速度可能会慢一些。
-* Stack(栈)：栈的优势是存取速度比堆要快，仅次于计算机里的寄存器，栈的数据是可以共享的，缺点是存在栈中的数据的大小与生存期必须是确定的，缺乏一些灵活性。栈中主要存放一些基本类型的变量，比如int，short，long，byte，double，float，boolean，char，对象句柄。
-* java内存模型要求调用栈和本地内存变量存放在线程栈（Thread Stack）上，对象存放在堆上。一个本地变量可能存放一个对象的引用，这时引用变量存放在本地栈上，但是对象本身存放在堆上，成员变量跟随着对象存放在堆上，而不管是原始类型还是引用类型，静态成员变量跟随着类的定义一起存在在堆上
-*存在堆上的对象，可以被持有这个对象的引用的线程访问。如果两个线程同时访问同一个对象的成员变量，这时他们获得的是这个对象的私有拷贝。
+1. synchronized：依赖JVM （主要依赖JVM实现锁，因此在这个关键字作用对象的作用范围内，都是同一时刻只能有一个线程进行操作的）
+2. Lock：依赖特殊的CPU指令，代码实现，ReentrantLock
 
-**计算机硬件架构**
+>synchronized:当两个并发线程(thread1和thread2)访问同一个对象(syncThread)中的synchronized代码块时，在同一时刻只能有一个线程得到执行，另一个线程受阻塞，必须等待当前线程执行完这个代码块以后才能执行该代码块。Thread1和thread2是互斥的，因为在执行synchronized代码块时会锁定当前的对象，只有执行完该代码块才能释放该对象锁，下一个线程才能执行并锁定该对象。但是也要这主意每个对象只有一个锁（lock）如果声明多个对象则每个对象互不干扰
 
-![计算机硬件架构][image-5]
+### 原子性-对比
+1. synchronize：不可中断，适合竞争不激烈，可读性好。
+2. lock：可中断锁，多样化同步，竞争激烈时能维持常态。
+3. atomic：竞争激烈时能维持常态，比lock性能好，但只能同步一个值。
 
-* CPU：一个计算机一般有多个CPU，一个CPU还会有多核
-* CPU Registers（寄存器）：每个CPU都包含一系列的寄存器，他们是CPU内存的基础，CPU在寄存器上执行的速度远大于在主存上执行的速度。
-* CPU Cache（高速缓存）：由于计算机的存储设备与处理器的处理设备有着几个数量级的差距，所以现代计算机都会加入一层读写速度与处理器处理速度接近想同的高级缓存来作为内存与处理器之间的缓冲，将运算使用到的数据复制到缓存中，让运算能够快速的执行，当运算结束后，再从缓存同步到内存之中，这样，CPU就不需要等待缓慢的内存读写了
-* 主（内）存：一个计算机包含一个主存，所有的CPU都可以访问主存，主存比缓存容量大的多
+### 可见性
+一个线程对主线程的修改可以及时的被其他线程观察到
 
->运作原理：通常情况下，当一个CPU要读取主存的时候，他会将主存中的数据读取到CPU缓存中，甚至将缓存中的内容读到内部寄存器里面，然后再寄存器执行操作，当运行结束后，会将寄存器中的值刷新回缓存中，并在某个时间点刷新回主存
+导致共享变量在线程中不可见的原因:
 
-**内存模型与硬件架构之间的关联**
-
-![内存模型与硬件架构之间的关联][image-1]
-
-所有线程栈和堆会被保存在缓存里面，部分可能会出现在CPU缓存中和CPU内部的寄存器里面
+1. 线程交叉执行。
+2. 重排序结合线程交叉执行。
+3. 共享变量更新后的值没有在工作内存与主内存间及时更新。
 
 
-**线程和主内存的抽象关系**
+**java提供了synchronized和volatile 两种方法来确保可见性**
 
-![线程和主内存的抽象关系][image-2]
+JMM（java内存模型）关于synchronized的两条规定:
 
-1. 每个线程之间共享变量都存放在主内存里面，每个线程都有一个私有的本地内存.
-2. 本地内存是java内存模型中抽象的概念，并不是真实存在的（他涵盖了缓存写缓冲区。寄存器，以及其他硬件的优化）
-3. 本地内存中存储了以读或者写共享变量的拷贝的一个副本.
-4. 从一个更低的层次来说，线程本地内存，他是cpu缓存，寄存器的一个抽象描述，而JVM的静态内存存储模型，他只是一种对内存模型的物理划分而已，只局限在内存，而且只局限在JVM的内存.
+1. 线程解锁前，必须把共享变量的最新值刷新到主内存。
+2. 线程加锁时，将清空工作内存中共享变量的值，从而使用共享变量时需要从主内存中重新读取最新的值（注意，加锁和解锁是同一把锁）。
 
-如果线程A和线程B要通信，必须经历两个过程:
+. volatile：通过加入`内存屏障`和`禁止重排序优化`来实现
 
-1. A将本地内存变量刷新到主内存.
-2. B从主内存中读取变量.
+![volatile写][image-1]
+![volatile读][image-2]
 
-### 八种同步规则
+```java
+@Slf4j
+@NotThreadSafe
+public class CountExample4 extends AbstractExample{
 
-![八种同步规则][image-3]
+    /** 请求总数 */
+    public static int clientTotal = 5000;
+    /** 同时并发执行的线程数 */
+    public static int threadTotal = 50;
 
-1. lock（锁定）：作用于主内存的变量，把一个变量标识变为一条线程独占状态。
-2. unlock（解锁）：作用于主内存的变量，把一个处于锁定状态的变量释放出来，释放后的变量才可以被其他线程锁定。
-3. read（读取）：作用于主内存的变量，把一个变量值从主内存传输到线程的工作内存中，以便随后的load动作使用。
-4. load（载入）：作用于工作内存的变量，它把read操作从主内存中得到的变量值放入工作内存的变量副本中。
-5. use（使用）：作用于工作内存的变量，把工作内存中的一个变量值传递给执行引擎。
-6. assign（赋值）：作用于工作内存的变量，它把一个从执行引擎接受到的值赋值给工作内存的变量。
-7. store（存储）：作用于工作内存的变量，把工作内存中的一个变量的值传送到主内存中，以便随后的write的操作。
-8. write（写入）：作用于主内存的变量，它把store操作从工作内存中一个变量的值传送到主内存的变量中。
+    public volatile static int count = 0;
 
-同步规则
-1. 如果要把一个变量从主内存中赋值到工作内存，就需要按顺序得执行read和load操作，如果把变量从工作内存中同步回主内存中，就要按顺序得执行store和write操作，但java内存模型只要求上述操作必须按顺序执行，没有保证必须是连续执行。
-2. 不允许read和load、store和write操作之一单独出现。
-3. 不允许一个线程丢弃他的最近assign的操作，即变量在工作内存中改变了之后必须同步到主内存中。
-4. 不允许一个线程无原因地（没有发生过任何assign操作）把数据从工作内存同步到主内存中。
-5. 一个新的变量只能在主内存中诞生，不允许在工作内存中直接使用一个未被初始化（load或assign）的变量。即就是对一个变量实施use和store操作之前，必须先执行过了load和assign操作。
-6. 一个变量在同一时刻只允许一条线程对其进行lock操作，但lock操作可以同时被一条线程重复执行多次，多次执行lock后，只有执行相同次数的unlock操作，变量才会解锁，lock和unlock必须成对出现。
-7. 如果一个变量执行lock操作，将会清空工作内存中此变量的值，在执行引擎中使用这个变量前需要重新执行load或assign操作初始化变量的值
-8. 如果一个变量事先没有被lock操作锁定，则不允许他执行unlock操作，也不允许去unlock一个被其他线程锁定的变量。
-9. 对一个变量执行unlock操作之前，必须先把此变量同步到主内存中（执行store和write操作）。
+    /**
+     * 本质上应该是这个方法线程不安全
+     *
+     * volatile只能保证 1，2，3的顺序不会被重排序
+     * 但是不保证1，2，3的原子执行，也就是说还是有可能有两个线程交叉执行1，导致结果不一致
+     */
+    @Override
+    protected void add() {
+        // 1.取内存中的count值
+        // 2.count值加1
+        // 3.重新写会主存
+        count++;
+    }
+
+    @Override
+    protected void countLog() {
+        log.info("count:{}",count);
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        new CountExample4().add();
+    }
+
+}
+
+```
+
+volatile使用条件
+
+1. 对变量写操作不依赖于当前值
+2. 该变量没有包含在具有其他变量的不必要的式子中
+
+综上，volatile特别适合用来做线程标记量，如下图
+![volatile][image-3]
+
+### 有序性
+java 内存模型中，允许编译器和处理器对指令进行重排序，但是重排序过程不会影响到单线程程序的执行，却会影响到多线程的并发执行的正确性
 
 
-高并发解决思路和手段一般有 扩容，缓存，队列，拆分，服务降级与熔断，数据库切分，分库分表，等等
+* happens-before原则
+	1. 程序次序规则：一个线程内，按照代码顺序，书写在前面的操作先行发生于书写在后面的操作。
+	2. 锁定规则:一个unLock操作先行发生于后面对同一个锁的lock操作。
+	3. volatile变量规则：对一个变量的写操作先行发生于后面对这个变量的读操作。
+	4. 传递规则：如果操作A先行发生于操作B，而操作B又先行发生于操作C 则可以得出操作A先行发生于操作C
+	5. 线程启动原则：Thread对象的start方法先行发生于此线程的每一个动作
+	6. 线程中断规则：对线程interrupt方法的调用先行发生于被中断线程的代码检测到中断事件的发生
+	7. 线程终结规则：线程中所有操作都先行发生于线程的终止检测，可以通过Thread.join方法结束，Thread.isAlive的返回值检测到线程已经终止执行。
+	8. 对象终结规则:一个对象的初始化完成先行发生于它的finalize方法的开始
 
-[image-1]: /img/concurrent-basic/C52A5BF497F00A5CDDB7C02F2C0A7DCB.png
-[image-2]: /img/concurrent-basic/9021712F206543E8DF4B9E3DC17B5AD8.png
-[image-3]: /img/concurrent-basic/D6962525C025F44CBFABEC462E34B0FE.png 
-[image-4]: /img/concurrent-basic/F6A4A3C2414BA7C445210684B7EF13F2.png
-[image-5]: /img/concurrent-basic/CDECD3DEFA6B011E744ECCFD8BBC8668.png
+`第一条规则要注意理解，这里只是程序的运行结果看起来像是顺序执行，虽然结果是一样的，jvm会对没有变量值依赖的操作进行重排序，这个规则只能保证单线程下执行的有序性，不能保证多线程下的有序性`
+
+Happens-before原则，先天有序性，即不需要任何额外的代码控制即可保证有序性,如果两个操作的次序不能从这八种规则中推倒出来，则不能保证有序性。
+
+
+[image-1]: /img/concurrent-safe/E26ACBF78BA571DBACD9D068E8C29C62.png
+[image-2]: /img/concurrent-safe/A86445F75489714B2C7B81205E244183.png
+[image-3]: /img/concurrent-safe/71125601C21FCC2F2C132150AD07CB86.png
+
