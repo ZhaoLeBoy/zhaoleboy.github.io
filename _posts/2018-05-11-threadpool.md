@@ -61,10 +61,15 @@ tags:
      */
     private volatile RejectedExecutionHandler handler;
 ```
-1. 如果运行的线程数少于`corePoolSize` 直接创建新线程处理任务。即使线程池中其他线程是空闲的。
-2. 如果线程数大于等于`corePoolSize`并且小于`maximumPoolSize`，只有`等workQueue`满的时候才会去创建新的任务。
-3. 如果corePoolSize和maximumPoolSize设置数量是一致的,则线程池是固定的,如果`workQueue`没有满则放入`workQueue`，等待有空闲的线程从workQueue取出任务去处理
-4. 如果运行线程的数量大于`maximumPoolSiz`，如果`workQueue`也满了，则会根据一个拒绝策略的参数来指定策略 来处理任务。
+
+ThreadPoolExecutor 对线程池和队列的使用方式如下：
+
+1. 从线程池中获取可用线程执行任务，如果没有可用线程则使用ThreadFactory创建新的线程，直到线程数达到corePoolSize限制
+2. 线程池线程数达到corePoolSize以后，新的任务将被放入队列，直到队列不能再容纳更多的任务
+3. 当队列不能再容纳更多的任务以后，会创建新的线程，直到线程数达到maxinumPoolSize限制
+4. 线程数达到maxinumPoolSize限制以后新任务会被拒绝执行，调用 RejectedExecutionHandler 进行处理
+
+
 
 ### 线程池状态 
 ![线程池状态][image-1]
@@ -87,6 +92,37 @@ tags:
 1. cpu密集型任务，就需要尽量压榨cpu，参考值可以设置为NCPU+1
 2. IO密集任务 参考值可以设置为2*NCPU
 
+
+### 一些线程的问题
+[ThreadPoolExecutor策略配置以及应用场景](https://segmentfault.com/a/1190000008394155)这篇文章对几种常用的ThreadPoolExecutor写得非常详细
+
+
+#### 为什么newFixedThreadPool中要将corePoolSize和maximumPoolSize设置成一样？
+```
+  public static ExecutorService newFixedThreadPool(int nThreads) {
+        return new ThreadPoolExecutor(nThreads, nThreads,
+                                      0L, TimeUnit.MILLISECONDS,
+                                      new LinkedBlockingQueue<Runnable>());
+    }
+```
+因为newFixedThreadPool中用的是LinkedBlockingQueue（是无界队列），只要当前线程大于等于corePoolSize来的任务就直接加入到无界队列中，所以线程数不会超过corePoolSize，这样maximumPoolSize没有用。例如，在 Web 页服务器中。这种排队可用于处理瞬态突发请求，当命令以超过队列所能处理的平均数连续到达时，此策略允许无界线程具有增长的可能性。
+
+
+#### 为什么newFixedThreadPool中队列使用LinkedBlockingQueue？
+设置的corePoolSize 和 maximumPoolSize相同，则创建的线程池是大小固定的，要保证线程池大小固定则需要LinkedBlockingQueue（无界队列）来保证来的任务能够放到任务队列中，不至于触发拒绝策略。
+
+
+#### 为什么newFixedThreadPool中keepAliveTime会设置成0？
+因为corePoolSize和maximumPoolSize一样大，KeepAliveTime设置的时间会失效，所以设置为0
+
+#### 为什么newCachedThreadPool中要将corePoolSize设置成0？
+因为队列使用SynchronousQueue，队列中只能存放一个任务，保证所有任务会先入队列，用于那些互相依赖的线程，比如线程A必须在线程B之前先执行。
+
+#### 为什么newCachedThreadPool中队列使用SynchronousQueue？
+线程数会随着任务数量变化自动扩张和缩减，可以灵活回收空闲线程，用SynchronousQueue队列整好保证了CachedTheadPool的特点。
+
+#### 为什么newSingleThreadExecutor中使用DelegatedExecutorService去包装ThreadPoolExecutor？
+SingleThreadExecutor是单线程化线程池，用DelegatedExecutorService包装为了屏蔽ThreadPoolExecutor动态修改线程数量的功能，仅保留Executor中的方法。
 
 [image-1]: /img/concurrent-threadpool/BBD60F5BF4C01F8C32457FCF9A7BA371.jpg
 
