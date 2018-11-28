@@ -7,7 +7,6 @@ author:     "ZhaoLe"
 header-img: "img/post-bg-2015.jpg"
 tags:
     - Netty
-    - 源码
 ---
 
 服务端的channel是通过反射创建出来的，具体这个`NioServerSocketChannel`的初始化是在什么时候发生的后面会介绍。先看这个类的无参构造方法。
