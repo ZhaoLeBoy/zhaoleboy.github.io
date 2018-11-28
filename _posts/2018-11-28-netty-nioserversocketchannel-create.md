@@ -12,6 +12,7 @@ tags:
 服务端的channel是通过反射创建出来的，具体这个`NioServerSocketChannel`的初始化是在什么时候发生的后面会介绍。先看这个类的无参构造方法。
 
 `NioServerSocketChannel`的类的继承关系图
+
 ![NioServerSocketChannel.png][image-1]
 
 ```java
@@ -50,23 +51,25 @@ NioServerSocketChannel初始化做的三件事情:
         }
     }
 ```
+
 ### 2-2. 继承父类设置channel相关配置
+
 ```java
 public NioServerSocketChannel(ServerSocketChannel channel) {
-    //注意这个SelectionKey.OP_ACCEPT 
-    //这个是服务端的channel所以设置OP_ACCEPT
-    //在轮训中，表示请求在接受新连接并创建 Channel 时获得通知
-    super(null, channel, SelectionKey.OP_ACCEPT);
+  //注意这个SelectionKey.OP_ACCEPT 
+  //这个是服务端的channel所以设置OP_ACCEPT
+  //在轮训中，表示请求在接受新连接并创建 Channel 时获得通知
+  super(null, channel, SelectionKey.OP_ACCEPT);
 }
 ```
 > 继承链如下：
 NioServerSocketChannel->AbstractNioMessageChannel->AbstractNioChannel->AbstractChannel
 重要的几个方法是在`AbstractNioChannel`，`AbstractChannel`
 
-* AbstractNioChannel
-
-  ```java
-  protected AbstractNioChannel(Channel parent, SelectableChannel ch, int readInterestOp) {
+  * AbstractNioChannel
+  
+    ```java
+    protected AbstractNioChannel(Channel parent, SelectableChannel ch, int readInterestOp) {
       super(parent);
       this.ch = ch;
       this.readInterestOp = readInterestOp;
@@ -76,10 +79,11 @@ NioServerSocketChannel->AbstractNioMessageChannel->AbstractNioChannel->AbstractC
       } catch (IOException e) {
          ...
       }
-  }
-  ```
+    }
+    ```
   
 * AbstractChannel
+
   ```java
   protected AbstractChannel(Channel parent) {
       this.parent = parent;
@@ -91,11 +95,12 @@ NioServerSocketChannel->AbstractNioMessageChannel->AbstractNioChannel->AbstractC
       pipeline = newChannelPipeline();
   }
   ```
-### 2-3. 创建`ServerSocketChannelConfig`类
-```java
-    //将ServerSocketChannel作为构造函数参数之一，用于给channel配置TCP的一些配置
-    //TODO:.....
-   config = new NioServerSocketChannelConfig(this, javaChannel().socket());
-```
 
+### 2-3. 创建`ServerSocketChannelConfig`类
+
+```java
+  //将ServerSocketChannel作为构造函数参数之一，用于给channel配置TCP的一些配置
+  //TODO:.....
+ config = new NioServerSocketChannelConfig(this, javaChannel().socket());
+```
 [image-1]: /img/netty/NioServerSocketChannel.png
