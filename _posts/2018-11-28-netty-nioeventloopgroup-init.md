@@ -91,7 +91,9 @@ NioEventLoop继承关系如下
           this.maxPendingTasks = Math.max(16, maxPendingTasks);
           this.executor = ObjectUtil.checkNotNull(executor, "executor");
           //是一个LinkedBlockingQueue队列
-          //LinkedBlockingQueue实现的队列中的锁是分离的，其添加采用的是putLock，移除采用的则是takeLock，这样能大大提高队列的吞吐量，也意味着在高并发的情况下生产者和消费者可以并行地操作队列中的数据，以此来提高整个队列的并发性能。
+          //LinkedBlockingQueue实现的队列中的锁是分离的，其添加采用的是putLock，移除采用的则是takeLock
+          //这样能大大提高队列的吞吐量，也意味着在高并发的情况下生产者和消费者可以并行地操作队列中的数据
+          //以此来提高整个队列的并发性能。
           taskQueue = newTaskQueue(this.maxPendingTasks);
           //拒绝策略
           rejectedExecutionHandler = ObjectUtil.checkNotNull(rejectedHandler, "rejectedHandler");
