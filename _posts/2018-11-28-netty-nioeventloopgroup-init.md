@@ -29,24 +29,24 @@ NioEventLoopGroup初始化 做了三件事
 
 ### 1-1  构造线程创建器`ThreadPerTaskExecutor`
 ```java
-     executor = new ThreadPerTaskExecutor(newDefaultThreadFactory());
+executor = new ThreadPerTaskExecutor(newDefaultThreadFactory());
 ```
 实例化实现主要是在`newDefaultThreadFactory()`
 
 ```java
  public DefaultThreadFactory(String poolName, boolean daemon, int priority, ThreadGroup threadGroup) {
-        ...
-        //给这个线程执行器命名`eventLoopGroup_` +自增器
-        prefix = poolName + '-' + poolId.incrementAndGet() + '-'; 
-        ...
-    }
+    ...
+    //给这个线程执行器命名`eventLoopGroup_` +自增器
+    prefix = poolName + '-' + poolId.incrementAndGet() + '-'; 
+    ...
+}
 ```
 
 ### 1-2  创建事件执行期`EventExecutor`
 
 ```java
-  //  具体实现是在`NioEventLoop`中实现
-  children[i] = newChild(executor, args);
+//  具体实现是在`NioEventLoop`中实现
+children[i] = newChild(executor, args);
 ```
 NioEventLoop继承关系如下
 ![NioEventLoop.png][image-2]
@@ -57,7 +57,7 @@ NioEventLoop继承关系如下
 
 * NioEventLoop
 
-  ```java
+ ```java
     NioEventLoop(NioEventLoopGroup parent, Executor executor, SelectorProvider selectorProvider,
                  SelectStrategy strategy, RejectedExecutionHandler rejectedExecutionHandler) {
         //继承链。。。
@@ -82,25 +82,27 @@ NioEventLoop继承关系如下
 
 
 * SingleThreadExecutor
+
   ```java
-    protected SingleThreadEventExecutor(EventExecutorGroup parent, Executor executor,
-                                          boolean addTaskWakesUp, int maxPendingTasks,
-                                          RejectedExecutionHandler rejectedHandler) {
-          super(parent);
-          this.addTaskWakesUp = addTaskWakesUp;
-          this.maxPendingTasks = Math.max(16, maxPendingTasks);
-          this.executor = ObjectUtil.checkNotNull(executor, "executor");
-          //是一个LinkedBlockingQueue队列
-          //LinkedBlockingQueue实现的队列中的锁是分离的，其添加采用的是putLock，移除采用的则是takeLock
-          //这样能大大提高队列的吞吐量，也意味着在高并发的情况下生产者和消费者可以并行地操作队列中的数据
-          //以此来提高整个队列的并发性能。
-          taskQueue = newTaskQueue(this.maxPendingTasks);
-          //拒绝策略
-          rejectedExecutionHandler = ObjectUtil.checkNotNull(rejectedHandler, "rejectedHandler");
-      }
+  protected SingleThreadEventExecutor(EventExecutorGroup parent, Executor executor,
+                                    boolean addTaskWakesUp, int maxPendingTasks,
+                                    RejectedExecutionHandler rejectedHandler) {
+    super(parent);
+    this.addTaskWakesUp = addTaskWakesUp;
+    this.maxPendingTasks = Math.max(16, maxPendingTasks);
+    this.executor = ObjectUtil.checkNotNull(executor, "executor");
+    //是一个LinkedBlockingQueue队列
+    //LinkedBlockingQueue实现的队列中的锁是分离的，其添加采用的是putLock，移除采用的则是takeLock
+    //这样能大大提高队列的吞吐量，也意味着在高并发的情况下生产者和消费者可以并行地操作队列中的数据
+    //以此来提高整个队列的并发性能。。
+    taskQueue = newTaskQueue(this.maxPendingTasks);
+    //拒绝策略
+    rejectedExecutionHandler = ObjectUtil.checkNotNull(rejectedHandler, "rejectedHandler");
+  }
   ```
 
 ### 1.3  创建线程事件执行器的选择器chooser
+
 ```java
 chooser = chooserFactory.newChooser(children);
 ```

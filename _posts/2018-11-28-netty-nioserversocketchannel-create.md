@@ -29,27 +29,26 @@ NioServerSocketChannel初始化做的三件事情:
 ### 2-1. 调用jdk底层创建ServerSocketChannel
 
 ```java
-    private static ServerSocketChannel newSocket(SelectorProvider provider) {
-        try {
-            /**
-             * 默认实现是在{@Link ServerSocketChannel#open }
-             * SelectorProvider.provider().openServerSocketChannel();
-             *
-             *  当前的SelectorProviderde provider方法，这个方法包含了一个同步代码块，
-             *  每创建一个新的channel都会去调用这个方法，执行里面的同步代码块。
-             *  当应用创建许多的连接的时候，这个会导致不必要的阻塞，每秒创建5000个连接的时候，性能会下降1%
-             *
-             *  可能的解决方案是存储provider方法的结果，然后直接用selectorProvider的openSocketChannel创建channel,而不是使用SocketChannel的open方法。
-             *  所以在Netty最近的版本中，确实对这个方案进行了实现，将provider直接设置成SocketChannel类的静态成员，并进行初始化赋值。
-             */
-
-            //创建一个新的channel
-            return provider.openServerSocketChannel();
-        } catch (IOException e) {
-            throw new ChannelException(
-                    "Failed to open a server socket.", e);
-        }
+private static ServerSocketChannel newSocket(SelectorProvider provider) {
+    try {
+        /**
+         * 默认实现是在{@Link ServerSocketChannel#open }
+         * SelectorProvider.provider().openServerSocketChannel();
+         *
+         *  当前的SelectorProviderde provider方法，这个方法包含了一个同步代码块，
+         *  每创建一个新的channel都会去调用这个方法，执行里面的同步代码块。
+         *  当应用创建许多的连接的时候，这个会导致不必要的阻塞，每秒创建5000个连接的时候，性能会下降1%
+         *
+         *  可能的解决方案是存储provider方法的结果，然后直接用selectorProvider的openSocketChannel创建channel,而不是使用SocketChannel的open方法。
+         *  所以在Netty最近的版本中，确实对这个方案进行了实现，将provider直接设置成SocketChannel类的静态成员，并进行初始化赋值。
+         */
+  
+        //创建一个新的channel
+        return provider.openServerSocketChannel();
+    } catch (IOException e) {
+       ...
     }
+}
 ```
 
 ### 2-2. 继承父类设置channel相关配置
@@ -70,15 +69,15 @@ NioServerSocketChannel->AbstractNioMessageChannel->AbstractNioChannel->AbstractC
   
     ```java
     protected AbstractNioChannel(Channel parent, SelectableChannel ch, int readInterestOp) {
-      super(parent);
-      this.ch = ch;
-      this.readInterestOp = readInterestOp;
-      try {
-          //调用jdk底层设置channel的非阻塞模式
-          ch.configureBlocking(false);
-      } catch (IOException e) {
-         ...
-      }
+        super(parent);
+        this.ch = ch;
+        this.readInterestOp = readInterestOp;
+        try {
+            //调用jdk底层设置channel的非阻塞模式
+            ch.configureBlocking(false);
+        } catch (IOException e) {
+           ...
+        }
     }
     ```
   
