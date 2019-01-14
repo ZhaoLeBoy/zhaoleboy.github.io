@@ -2,7 +2,7 @@
 title: Zhl Blog
 SEOTitle: 赵乐的博客 | Zhl Blog
 header-img: img/home-bg.jpg
-email: huxpro@gmail.com
+email: zhaolestyle@icloud.com
 description: "充满好奇，保持谦逊，一途一心。"
 keyword: ""
 url: "http://47.104.153.209:4000/"              # your host, for absolute URL
@@ -13,10 +13,10 @@ future: true
 
 # SNS settings
 RSS: false
-weibo_username:     zhlpro
-zhihu_username:     zhlpro
-github_username:    zhlpro
-twitter_username:   zhlpro
+weibo_username:     /u/2368954082
+# zhihu_username:     zhlpro
+github_username:    ZhaoLeBoy
+# twitter_username:   zhlpro
 #facebook_username:  huxpro
 #linkedin_username:  firstname-lastname-idxxxx
 
