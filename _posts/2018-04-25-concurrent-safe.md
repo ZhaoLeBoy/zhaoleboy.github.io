@@ -5,6 +5,7 @@ subtitle:   "线程安全的一些信息"
 date:       2018-04-25 04:00:00
 author:     "ZhaoLe"
 header-img: "img/post-bg-2015.jpg"
+catalog: true
 tags:
     - Java
     - 高并发

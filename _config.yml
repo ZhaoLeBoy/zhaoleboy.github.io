@@ -1,23 +1,24 @@
 # Site settings
-title: Jinli Blog
-SEOTitle: Hi!World
+title: Zhl Blog
+SEOTitle: 赵乐的博客 | Zhl Blog
 header-img: img/home-bg.jpg
-email: zhaolestyle@icloud.com
-description: ""
+email: huxpro@gmail.com
+description: "充满好奇，保持谦逊，一途一心。"
 keyword: ""
-#url: "https://zhaoleboy.github.io/"              # your host, for absolute URL  http://huangxuan.me
-url: "http://47.104.153.209:4000/" 
-baseurl: ""         # for example, '/blog' if your blog hosted on 'host/blog'
+url: "https://zhaoleboy.github.io"              # your host, for absolute URL
+baseurl: ""                             # for example, '/blog' if your blog hosted on 'host/blog'
 
-
+# Publish posts or collection documents with a future date.
+future: true
 
 # SNS settings
 RSS: false
-weibo_username:     freedom.zerox@163.com
-#zhihu_username:     huxpro
-github_username:    zhaoleboy
-#twitter_username:  huxpro
+weibo_username:     zhlpro
+zhihu_username:     zhlpro
+github_username:    zhlpro
+twitter_username:   zhlpro
 #facebook_username:  huxpro
+#linkedin_username:  firstname-lastname-idxxxx
 
 
 
@@ -26,14 +27,18 @@ github_username:    zhaoleboy
 highlighter: rouge
 permalink: pretty
 paginate: 10
-exclude: ["less","node_modules","Gruntfile.js","package.json","README.md"]
+exclude: ["less","node_modules","Gruntfile.js","package.json","README.md","README.zh.md"]
 anchorjs: true                          # if you want to customize anchor. check out line:181 of `post.html`
+# If you have timezone issue (e.g. #68) in China, uncomment to use this:
+#timezone: CN  
 
 
 
 # Gems
 # from PR#40, to support local preview for Jekyll 3.0
-gems: [jekyll-paginate]
+# make sure you have this gem installed
+# `$ gem install jekyll-paginate`
+plugins: [jekyll-paginate]
 
 
 
@@ -44,23 +49,27 @@ gems: [jekyll-paginate]
 markdown: kramdown
 kramdown:
   input: GFM                            # use Github Flavored Markdown !important
+  syntax_highlighter_opts:
+    span:
+      line_numbers: false
+    block:
+      line_numbers: true
+      start_line: 1
 
 
 
 # Disqus settings
-#disqus_username: _your_disqus_short_name_
+disqus_username: hux
 
-# Duoshuo settings
-#duoshuo_username: huxblog
-# Share component is depend on Comment so we can NOT use share only.
-#duoshuo_share: true                     # set to false if you want to use Comment without Sharing
-
+# Netease settings
+netease_comment: false
 
 
 
 # Analytics settings
-# Baidu Analytics
-ba_track_id: 4cc1f2d8f3067386cc5cdb626a202900
+# Baidu Analytics 
+# ba_track_id: [your track id]
+
 # Google Analytics
 ga_track_id: 'UA-49627206-1'            # Format: UA-xxxxxx-xx
 ga_domain: huangxuan.me
@@ -70,7 +79,7 @@ ga_domain: huangxuan.me
 # Sidebar settings
 sidebar: true                           # whether or not using Sidebar.
 sidebar-about-description: "一途一心"
-sidebar-avatar: ./img/avatar-me.png      # use absolute URL, seeing it's used in both `/` and `/about/`
+sidebar-avatar: /img/avatar-me.png      # use absolute URL, seeing it's used in both `/` and `/about/`
 
 
 
@@ -80,22 +89,21 @@ featured-condition-size: 1              # A tag will be featured if the size of 
 
 
 
+# Progressive Web Apps
+chrome-tab-theme-color: "#000000"
+service-worker: true
+
+
+
+# MathJax rendering for layout:page (e.g. post preview)
+page-mathjax: false
+
+
+
 # Friends
-friends: [
+#friends: [
     # {
-    #     title: "Hux Blog",
-    #     href: "http://huangxuan.me"
-    # },{
-    #     title: "Foo",
-    #     href: "#"
-    # },{
-    #     title: "Bar",
-    #     href: "#"
-    # },{
-    #     title: "Example Friends",
-    #     href: "#"
-    # },{
-    #     title: "It helps SEO",
-    #     href: "#"
+    #     title: "Su",
+    #     href: "http://su.gallery/"
     # }
-]
+#]
