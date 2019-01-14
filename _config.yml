@@ -5,7 +5,7 @@ header-img: img/home-bg.jpg
 email: huxpro@gmail.com
 description: "充满好奇，保持谦逊，一途一心。"
 keyword: ""
-url: "https://zhaoleboy.github.io"              # your host, for absolute URL
+url: "http://47.104.153.209:4000/"              # your host, for absolute URL
 baseurl: ""                             # for example, '/blog' if your blog hosted on 'host/blog'
 
 # Publish posts or collection documents with a future date.
