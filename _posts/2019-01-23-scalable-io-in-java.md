@@ -2,9 +2,9 @@
 layout:     post
 title:      "《Scalable IO in Java》学习笔记"
 subtitle:   "《Scalable IO in Java》学习"
-date:        2018-12-29
+date:        2019-01-23
 author:     "ZhaoLe"
-header-img: "img/post-bg-2015.jpg"
+header-img: "img/netty/scalable-io/post-bg.jpg"
 catalog: true
 tags:
     - Netty
