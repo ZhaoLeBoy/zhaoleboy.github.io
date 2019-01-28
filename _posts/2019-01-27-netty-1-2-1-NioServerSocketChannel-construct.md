@@ -69,7 +69,7 @@ public NioServerSocketChannel(ServerSocketChannel channel) {
 NioServerSocketChannel->AbstractNioMessageChannel->AbstractNioChannel->AbstractChannel
 重要的几个方法是在`AbstractNioChannel`，`AbstractChannel`
 
-  * AbstractNioChannel
+   * AbstractNioChannel
   
     ```java
     protected AbstractNioChannel(Channel parent, SelectableChannel ch, int readInterestOp) {
@@ -97,11 +97,13 @@ NioServerSocketChannel->AbstractNioMessageChannel->AbstractNioChannel->AbstractC
   ```
   【3】channel的唯一标识
   【4】//TODO底层读写跟tcp有关。
-  【5】TODO:.....
+  【5】为这个channel实例化个pipeline对象,  pipline就是双向链表结构模型，会在后续文章展开说明。
 
-###  3. 创建`ServerSocketChannelConfig`类
+### 3. 创建`ServerSocketChannelConfig`类
 ```java
-  //TODO:.....
  config = new NioServerSocketChannelConfig(this, javaChannel().socket());
 ```
 * 【1】 将ServerSocketChannel作为构造函数参数之一，用于给channel配置TCP的一些配置
+
+---
+TODO:pipeline文章

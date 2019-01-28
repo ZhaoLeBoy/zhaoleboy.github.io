@@ -92,7 +92,7 @@ serverBootstrap.group(bossGroup, wordGroup)
     }
     ```
     只有当调用`bind`方法（见demo），ChannelFactory才会去创建一个channel实例，所以现在只是设置好成员变量。
-    最后对通过反射实例化的`NioServerSocketChannel`这个类的无参构造方法究竟做了什么请看[【1-2-1.Netty源码:服务端NioServerSocketChannel构造方法】]()
+    最后对通过反射实例化的`NioServerSocketChannel`这个类的无参构造方法究竟做了什么请看[【1-2-1.Netty源码:服务端NioServerSocketChanne构造方法】](http://jinlipool.com/2019/01/27/netty-1-2-1-NioServerSocketChannel-construct/)
   
 * `childHandler(ChannelHandler childHandler)`
   ```java

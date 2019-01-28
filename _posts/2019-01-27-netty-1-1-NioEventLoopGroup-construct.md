@@ -38,7 +38,7 @@ NioEventLoopGroup初始化 做了三件事
 //MultithreadEventLoopGroup.java
  executor = new ThreadPerTaskExecutor(newDefaultThreadFactory());
 ```
-`newDefaultThreadFactory()`自定义一个线程工厂。具体见[【1-1-1.Netty源码:线程执行器ThreadPerTaskExecutor】]()
+`newDefaultThreadFactory()`自定义一个线程工厂。具体见[【1-1-1.Netty源码:线程执行器ThreadPerTaskExecutor】](http://jinlipool.com/2019/01/27/netty-1-1-1-ThreadPerTaskExecutor/)
 
 
 ### 2.创建事件执行器`EventExecutor`
