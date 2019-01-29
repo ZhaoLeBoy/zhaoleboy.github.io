@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "Netty源码:ChannelFuture"
-subtitle:   "Netty源码:ChannelFuture"
+subtitle:   "ChannelFuture"
 date:        2019-01-28
 author:     "ZhaoLe"
 header-img: "img/netty/scalable-io/post-bg.jpg"

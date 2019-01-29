@@ -58,5 +58,10 @@ Netty开发基本就是这个模板套路,后面的对源码的理解和分析�
   * **[【1-2-1.Netty源码:服务端NioServerSocketChanne构造方法】](http://jinlipool.com/2019/01/27/netty-1-2-1-NioServerSocketChannel-construct/)**
 
 #### 二.服务端启动
+* **[【2-1.Netty源码:服务端启动】](http://jinlipool.com/2019/01/29/netty-2-1-ServerStart/)**
+  * **[【2-1-1.Netty源码:初始化服务端的channel】](http://jinlipool.com/2019/01/29/netty-2-1-1-server-channel-initialization/)**
+  * **[【2-1-2.Netty源码:注册服务端channel】](http://jinlipool.com/2019/01/29/netty-2-1-2-server-channel-register/)**
+  * **[【2-1-3.Netty源码:端口绑定】](http://jinlipool.com/2019/01/29/netty-2-1-3-server-socket-bind.md/)**
+
 #### 扩展
   * **[【Netty源码:ChannelFuture】](http://jinlipool.com/2019/01/28/netty-extend-1-ChannelFuture/)**
