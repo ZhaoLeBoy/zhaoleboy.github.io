@@ -66,6 +66,7 @@ Netty开发基本就是这个模板套路,后面的对源码的理解和分析�
 #### 三.EventLoop
 * **[【3-1.Netty源码:NioEventLoop启动】](http://jinlipool.com/2019/01/30/netty-3-1-evetloop-start/)**
 * **[【3-2.Netty源码:NioEventLoop循环检测事件】](http://jinlipool.com/2019/01/30/netty-3-2-evetloop-event-detection/)**
+  * **[【3-2-1.Netty源码:避免空轮循的bug】](http://jinlipool.com/2019/01/31/netty-3-2-1-avoid-epoll-bug)**
 * **[【3-3.Netty源码:NioEventLoop处理事件】](http://jinlipool.com/2019/01/30/netty-3-3-handle-event/)**
 * **[【3-4.Netty源码:任务和定时任务队列】](http://jinlipool.com/2019/01/30/netty-3-4-task.md/)**
 
