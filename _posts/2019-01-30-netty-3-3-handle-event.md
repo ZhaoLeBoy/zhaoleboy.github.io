@@ -11,6 +11,7 @@ tags:
 ---
 
 ```java
+//NioEventLoop
 @Override
 protected void run() {
   for (; ; ) {
@@ -43,6 +44,7 @@ protected void run() {
 * 【9】 processSelectedKeys此处是处理相关io连接问题
 
   ```java
+    //NioEventLoop
     private void processSelectedKeysOptimized() {
       //获取key
       for (int i = 0; i < selectedKeys.size; ++i) {
@@ -67,6 +69,7 @@ protected void run() {
   * 【7】 这个attachment是来自服务员端`NioServerSocketChannel`的Channel信息,`AbstractNioChannel#doRegister`中`selectionKey = javaChannel().register(eventLoop().unwrappedSelector(), 0, this);`
   * 【10】  processSelectedKey(k, (AbstractNioChannel) a);
       ```java
+      //NioEventLoop
        private void processSelectedKey(SelectionKey k, AbstractNioChannel ch) {
         final AbstractNioChannel.NioUnsafe unsafe = ch.unsafe();
         ...

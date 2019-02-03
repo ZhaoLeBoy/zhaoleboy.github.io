@@ -70,5 +70,12 @@ Netty开发基本就是这个模板套路,后面的对源码的理解和分析�
 * **[【3-3.Netty源码:NioEventLoop处理事件】](http://jinlipool.com/2019/01/30/netty-3-3-handle-event/)**
 * **[【3-4.Netty源码:任务和定时任务队列】](http://jinlipool.com/2019/01/30/netty-3-4-task.md/)**
 
+#### 四.新连接接入
+* **[【4-1.Netty源码:新连接检测】](http://jinlipool.com/2019/02/03/netty-4-1-connection-detection/)**
+  * **[【4-1-1.Netty源码:新连接NioSocketChannel 初始化】](http://jinlipool.com/2019/02/03/netty-4-1-1-NioSocketChannel-construct/)**
+* **[【4-2.Netty源码:NioSocketChannel的线程分配和selector注册】](http://jinlipool.com/2019/02/03/netty-4-2-NioSocketChannel-register/)**
+* **[【4-3.Netty源码:NioSocketChannel读事件注册】](http://jinlipool.com/2019/02/03/netty-4-3-NioSocketChannel-read-event-register/)**
+
+
 #### 扩展
   * **[【Netty源码:ChannelFuture】](http://jinlipool.com/2019/01/28/netty-extend-1-ChannelFuture/)**
