@@ -79,3 +79,4 @@ Netty开发基本就是这个模板套路,后面的对源码的理解和分析�
 
 #### 扩展
   * **[【Netty源码:ChannelFuture】](http://jinlipool.com/2019/01/28/netty-extend-1-ChannelFuture/)**
+  * **[【Netty源码:ChannelPipeline](http://jinlipool.com/2019/02/03/netty-extend-2-ChannelPipeline/)**
