@@ -80,9 +80,12 @@ ChannelHandlerContext#deregister(ChannelPromise)
  
   pipeline.addLast("decoder", new MyProtocolDecoder());
   pipeline.addLast("encoder", new MyProtocolEncoder());
-  //告诉pipeline运行MyBusinessLogicHandler的事件处理方法在不同的线程，这样io线程就不会被一个耗时任务给堵塞了。
-  //如果你的业务逻辑是异步或者完成非常快，就可以不必要指定group
-  //还有一种方法就是在MyBusinessLogicHandler业务里面用线程池进行业务处理，也可以避免io线程堵塞
+  /*
+  *告诉pipeline运行MyBusinessLogicHandler的事件处理方法在不同的线程，
+  *这样io线程就不会被一个耗时任务给堵塞了。如果你的业务逻辑是异步或者完成非常快，
+  *就可以不必要指定group .
+  *还有一种方法就是在MyBusinessLogicHandler业务里面用线程池进行业务处理，也可以避免io线程堵塞
+  */
   pipeline.addLast(group, "handler", new MyBusinessLogicHandler());
   ```
   
