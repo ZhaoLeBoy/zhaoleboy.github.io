@@ -10,9 +10,6 @@ tags:
     - Netty
 ---
 
-inBound事件是按照ChannelHandler的顺序进行执行的。
-![IMAGE](/img/netty/5-3/1.jpg)
-从head节点的`channelRead`开始
 
 首先自定义三个inbound处理器
 ```java
@@ -47,10 +44,11 @@ public class InBoundC extends ChannelInboundHandlerAdapter {
     }
 }
 ```
-使用debug方式启动服务器端，然后在使用客户端连接。
+InBound事件是按照ChannelHandler的顺序进行执行的。
+![IMAGE](/img/netty/5-3/1.jpg)
+从head节点的`channelRead`开始，使用debug方式启动服务器端，然后在使用客户端连接（下面代码有删减，只保留传播流程中部分代码）。
 
 当有新连接来到的时候，InBoundA中的`channelActive`方法触发，事件从调用`fireChannelRead`开始传播。
-DefaultChannelPipeline.fireChannelRead -> AbstractChannelHandlerContext.invokeChannelRead
 
 ```java
 //DefaultChannelPipeline.java
@@ -107,13 +105,13 @@ private void invokeChannelRead(Object msg) {
   ((ChannelInboundHandler) handler()).channelRead(this, msg);
 }
 ```
-调用到服务器端中`InBoundA#channelRead()`然后在方法内部继续调用` ctx.fireChannelRead(msg);`向下传播，继续调用上述的几个方法直到进去tail节点。
+调用到服务器端中`InBoundA#channelRead()`然后在方法内部继续调用`ctx.fireChannelRead(msg);`向下传播，继续调用上述的几个方法直到进去tail节点。
 需要说明的是`ctx.channel().pipeline().fireChannelRead();`是从head节点向下进行事件传播
-` ctx.fireChannelRead();`是从当前节点向下进行事件传播。
+`ctx.fireChannelRead();`是从当前节点向下进行事件传播。
 
 一直在最后到Tail的节点。会调用`TailContext`中的ChannelRead方法
 ```java
-//AbstractChannelHandlerContext.java
+//DefaultChannelPipeline.java
 @Override
 public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
     onUnhandledInboundMessage(msg);
