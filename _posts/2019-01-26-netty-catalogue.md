@@ -79,8 +79,9 @@ Netty开发基本就是这个模板套路,后面的对源码的理解和分析�
 ### 五.ChannelPipeline
 * **[【5-1.Netty源码:Pipeline初始化】](http://jinlipool.com/2019/02/09/netty-5-1-Pipeline-initialize/)**
 * **[【5-2.Netty源码:新增用户自定义ChannelHandler】](http://jinlipool.com/2019/02/09/netty-5-2-add-custom-handlers/)**
+* **[【5-3.Netty源码:InBound事件传播】](http://jinlipool.com/2019/02/09/netty-5-3-InBound-event/)**
 
 #### 扩展
   * **[【Netty源码:ChannelFuture】](http://jinlipool.com/2019/01/28/netty-extend-1-ChannelFuture/)**
-  * **[【Netty源码:ChannelPipeline](http://jinlipool.com/2019/02/03/netty-extend-2-ChannelPipeline/)**
-  * **[【Netty源码:ChannelHandlerContext](http://jinlipool.com/2019/02/07/netty-extend-3-ChannelHandlerContext/)**
+  * **[【Netty源码:ChannelPipeline】](http://jinlipool.com/2019/02/03/netty-extend-2-ChannelPipeline/)**
+  * **[【Netty源码:ChannelHandlerContext】](http://jinlipool.com/2019/02/07/netty-extend-3-ChannelHandlerContext/)**
