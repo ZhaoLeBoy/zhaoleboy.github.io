@@ -69,22 +69,22 @@ public NioServerSocketChannel(ServerSocketChannel channel) {
 NioServerSocketChannel->AbstractNioMessageChannel->AbstractNioChannel->AbstractChannel
 重要的几个方法是在`AbstractNioChannel`，`AbstractChannel`
 
-   * AbstractNioChannel
-  
-    ```java
-    protected AbstractNioChannel(Channel parent, SelectableChannel ch, int readInterestOp) {
-        super(parent);
-        this.ch = ch;
-        this.readInterestOp = readInterestOp;
-        try {
-            ch.configureBlocking(false);
-        } catch (IOException e) {
-           ...
-        }
+* AbstractNioChannel
+
+```java
+protected AbstractNioChannel(Channel parent, SelectableChannel ch, int readInterestOp) {
+    super(parent);
+    this.ch = ch;
+    this.readInterestOp = readInterestOp;
+    try {
+        ch.configureBlocking(false);
+    } catch (IOException e) {
+        ...
     }
-    ```
-     * 【6】 调用jdk底层设置channel的非阻塞模式
-  
+}
+```
+    * 【6】 调用jdk底层设置channel的非阻塞模式
+
 * AbstractChannel
 
   ```java

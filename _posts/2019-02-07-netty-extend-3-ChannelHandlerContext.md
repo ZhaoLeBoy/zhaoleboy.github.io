@@ -86,6 +86,8 @@ p2.addLast("f4", fh);
 __关系图__
 ![IMAGE](/img/netty/extend/channelHandlerContext/1.jpg)
 
+ChannelHandlerContext 代表了 ChannelHandler 和 ChannelPipeline 之间的关 联，每当有 ChannelHandler 添加到 ChannelPipeline 中时，都会创建 ChannelHandlerContext
+
 __事件的流动__
 ![IMAGE](/img/netty/extend/channelHandlerContext/2.jpg)
 
