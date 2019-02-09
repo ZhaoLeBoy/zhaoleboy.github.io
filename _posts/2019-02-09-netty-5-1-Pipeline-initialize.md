@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "5-1.Netty源码:5-1.Netty源码:Pipeline初始化"
+title:      "5-1.Netty源码:Pipeline初始化"
 subtitle:   "Pipeline初始化"
 date:        2019-02-09
 author:     "ZhaoLe"
