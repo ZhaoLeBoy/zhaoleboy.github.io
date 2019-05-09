@@ -51,7 +51,7 @@ Old区用标记清除或者标记整理。
 ---
 
 ##### 垃圾回收器分类
-* 串行收集器：Seria,Parallel New(Serial的多线程版本) ,Serial Old
+* 串行收集器：Serial,Parallel New(Serial的多线程版本) ,Serial Old
 * 并行收集器：Parallel Scavenge, Parallel Old
 * 并发收集器：CMS,G1 
 
