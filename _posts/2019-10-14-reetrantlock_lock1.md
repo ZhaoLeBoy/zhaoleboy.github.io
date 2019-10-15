@@ -11,8 +11,8 @@ tags:
 ---
 
 之前写过两篇文章,是关于ReentrantLock。
-* [1.ReetrantLock:单线程下的加锁过程](!http://jinlipool.com/2019/06/24/reetrantlock_1//)
-* [2.ReetrantLock:多线程下的加锁过程](!http://jinlipool.com/2019/06/24/reetrantlock_2/)
+* [1.ReetrantLock:单线程下的加锁过程](http://jinlipool.com/2019/06/24/reetrantlock_1/)
+* [2.ReetrantLock:多线程下的加锁过程](http://jinlipool.com/2019/06/24/reetrantlock_2/)
 
 总感觉还差点什么，放了许久后，再次进入源码中学习，这次又有更深的理解,准备换个角度从纯流程开始描述。
 
