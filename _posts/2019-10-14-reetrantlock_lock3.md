@@ -8,6 +8,7 @@ header-img: "img/lock/reetrantlock/post-bg.png"
 catalog: true
 tags:
     - ReetrantLock
+    - Lock
 ---
 
 ReentrantLock默认是用非公平锁，具体文章见[2.ReentrantLock-独占锁](http://jinlipool.com/2019/10/14/reetrantlock_lock2/)

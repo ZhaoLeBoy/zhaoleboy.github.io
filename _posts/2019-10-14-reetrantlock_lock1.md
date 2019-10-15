@@ -8,6 +8,7 @@ header-img: "img/lock/reetrantlock/post-bg.png"
 catalog: true
 tags:
     - ReetrantLock
+    - Lock
 ---
 
 之前写过两篇文章,是关于ReentrantLock。

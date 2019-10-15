@@ -7,7 +7,7 @@ author:     "ZhaoLe"
 header-img: "img/lock/reetrantlock/post-bg.png"
 catalog: true
 tags:
-    - Synchronized
+    - Synchronized Lock
 ---
 
 ##### 原理

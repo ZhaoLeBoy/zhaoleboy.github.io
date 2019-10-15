@@ -7,7 +7,8 @@ author:     "ZhaoLe"
 header-img: "img/lock/reetrantlock/post-bg.png"
 catalog: true
 tags:
-    - ReetrantLock
+    - ReetrantLock 
+    - Lock
 ---
 
 
