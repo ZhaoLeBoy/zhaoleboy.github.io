@@ -44,9 +44,9 @@ tags:
 
 一般来说安装Keepalived伴随这集群来的，具体根据当前是什么架构再进行配置,例如：
 
-**1. [Nginx+Keepalived 双机主备，双机热备](!http://jinlipool.com/2020/02/18/keepalived+nginx)**
+**1. [Nginx+Keepalived 双机主备，双机热备](!http://jinlipool.com/2020/02/18/keepalived_nginx)**
 
-**2. [LVS(DR模式)+Keepalived(主备)+Nginx](!http://jinlipool.com/2020/02/18/lvs+keepalived+nginx)**
+**2. [LVS(DR模式)+Keepalived(主备)+Nginx](!http://jinlipool.com/2020/02/18/lvs_keepalived_nginx)**
 
 #### 四. 将Keepalived作为系统服务启动
 1. 先回到解压后`keepalived-2.0.20`文件夹中。在进入里面的`keepalived`文件夹
