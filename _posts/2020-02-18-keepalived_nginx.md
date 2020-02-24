@@ -20,10 +20,10 @@ tags:
 | Nginx | 1.16.0 |
 
 ### 二.安装Nginx
- [Nginx的安装](!http://jinlipool.com/2020/02/17/nginx)
+ [Nginx的安装](http://jinlipool.com/2020/02/17/nginx)
 
 ### 三.安装Keepalived
- [Keepalived的安装](!http://jinlipool.com/2020/02/17/keepalived)
+ [Keepalived的安装](http://jinlipool.com/2020/02/17/keepalived)
 
 ### 四.双机主备
 
