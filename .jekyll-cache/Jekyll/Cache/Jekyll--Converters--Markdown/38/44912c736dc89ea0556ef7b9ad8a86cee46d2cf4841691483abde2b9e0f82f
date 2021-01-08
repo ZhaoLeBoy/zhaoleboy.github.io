@@ -1,0 +1,210 @@
+I";2<ul>
+  <li>
+    <h4 id="版本号说明">版本号说明</h4>
+    <blockquote>
+      <p>版本号：</p>
+    </blockquote>
+  </li>
+  <li>spring-session-data-redis：2.1.5.RELEASE</li>
+  <li>spring-boot-starter-data-redis：2.1.4.RELEASE</li>
+  <li>
+    <p>Spring Boot：2.1.4.RELEASE</p>
+  </li>
+  <li>
+    <h4 id="配置文件">配置文件</h4>
+  </li>
+</ul>
+
+<blockquote>
+  <p>pom.xml</p>
+</blockquote>
+
+<div class="language-xml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+</pre></td><td class="rouge-code"><pre><span class="c">&lt;!--redis模块--&gt;</span>
+<span class="nt">&lt;dependency&gt;</span>
+    <span class="nt">&lt;groupId&gt;</span>org.springframework.boot<span class="nt">&lt;/groupId&gt;</span>
+    <span class="nt">&lt;artifactId&gt;</span>spring-boot-starter-data-redis<span class="nt">&lt;/artifactId&gt;</span>
+<span class="nt">&lt;/dependency&gt;</span>
+<span class="c">&lt;!--sessions模块--&gt;</span>
+<span class="nt">&lt;dependency&gt;</span>
+    <span class="nt">&lt;groupId&gt;</span>org.springframework.session<span class="nt">&lt;/groupId&gt;</span>
+    <span class="nt">&lt;artifactId&gt;</span>spring-session-data-redis<span class="nt">&lt;/artifactId&gt;</span>
+<span class="nt">&lt;/dependency&gt;</span>
+<span class="c">&lt;!--web模块--&gt;</span>
+<span class="nt">&lt;dependency&gt;</span>
+    <span class="nt">&lt;groupId&gt;</span>org.springframework.boot<span class="nt">&lt;/groupId&gt;</span>
+    <span class="nt">&lt;artifactId&gt;</span>spring-boot-starter-web<span class="nt">&lt;/artifactId&gt;</span>
+<span class="nt">&lt;/dependency&gt;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<blockquote>
+  <p>application.properties</p>
+</blockquote>
+
+<div class="language-properties highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre><span class="py">spring.redis.host</span><span class="p">=</span><span class="s">127.0.0.1</span>
+<span class="py">spring.session.store-type</span><span class="p">=</span><span class="s">redis</span>
+<span class="py">server.port</span><span class="p">=</span><span class="s">8899</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<ul>
+  <li>
+    <h4 id="示例代码">示例代码</h4>
+    <p>直接在Controller层写个demo。然后运行起来。直接访问<code class="highlighter-rouge">http://localhost:8080/session</code> 就可以根据断点一步步调试。</p>
+    <blockquote>
+      <p>DemoController.java</p>
+    </blockquote>
+  </li>
+</ul>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+</pre></td><td class="rouge-code"><pre><span class="nd">@ResponseBody</span>
+<span class="nd">@RequestMapping</span><span class="o">(</span><span class="n">value</span> <span class="o">=</span> <span class="s">"/session"</span><span class="o">)</span>
+<span class="kd">public</span> <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">Object</span><span class="o">&gt;</span> <span class="nf">getSession</span><span class="o">(</span><span class="nc">HttpServletRequest</span> <span class="n">request</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">request</span><span class="o">.</span><span class="na">getSession</span><span class="o">().</span><span class="na">setAttribute</span><span class="o">(</span><span class="s">"username1"</span><span class="o">,</span> <span class="s">"guest1"</span><span class="o">);</span>
+    <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">Object</span><span class="o">&gt;</span> <span class="n">map</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">();</span>
+    <span class="n">map</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">"sessionId"</span><span class="o">,</span> <span class="n">request</span><span class="o">.</span><span class="na">getSession</span><span class="o">().</span><span class="na">getId</span><span class="o">());</span>
+    <span class="n">map</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">"maxInactiveInterval"</span><span class="o">,</span> <span class="n">request</span><span class="o">.</span><span class="na">getSession</span><span class="o">().</span><span class="na">getMaxInactiveInterval</span><span class="o">()</span> <span class="o">/</span> <span class="mi">60</span><span class="o">);</span>
+    <span class="n">map</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">"createTime"</span><span class="o">,</span> <span class="k">new</span> <span class="nc">Date</span><span class="o">(</span><span class="n">request</span><span class="o">.</span><span class="na">getSession</span><span class="o">().</span><span class="na">getCreationTime</span><span class="o">()));</span>
+    <span class="k">return</span> <span class="n">map</span><span class="o">;</span>
+<span class="o">}</span>
+
+<span class="nd">@ResponseBody</span>
+<span class="nd">@RequestMapping</span><span class="o">(</span><span class="n">value</span> <span class="o">=</span> <span class="s">"/get"</span><span class="o">)</span>
+<span class="kd">public</span> <span class="nc">String</span> <span class="nf">get</span><span class="o">(</span><span class="nc">HttpServletRequest</span> <span class="n">request</span><span class="o">)</span> <span class="o">{</span>
+    <span class="nc">String</span> <span class="n">userName</span> <span class="o">=</span> <span class="o">(</span><span class="nc">String</span><span class="o">)</span> <span class="n">request</span><span class="o">.</span><span class="na">getSession</span><span class="o">().</span><span class="na">getAttribute</span><span class="o">(</span><span class="s">"username"</span><span class="o">);</span>
+    <span class="k">return</span> <span class="n">userName</span><span class="o">;</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h3 id="核心类介绍">核心类介绍</h3>
+
+<ul>
+  <li>
+    <h4 id="sessionrepositoryfilter">SessionRepositoryFilter</h4>
+    <p>Spring-Session中的<code class="highlighter-rouge">SessionRepositoryFilter</code>是核心过滤器。他用于将Http请求拦截然后包装成自己的请求。再进行后续的操作。</p>
+  </li>
+</ul>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class="rouge-code"><pre><span class="c1">//SessionRepositoryFilter.java</span>
+<span class="nd">@Order</span><span class="o">(</span><span class="nc">SessionRepositoryFilter</span><span class="o">.</span><span class="na">DEFAULT_ORDER</span><span class="o">)</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">SessionRepositoryFilter</span><span class="o">&lt;</span><span class="no">S</span> <span class="kd">extends</span> <span class="nc">Session</span><span class="o">&gt;</span> <span class="kd">extends</span> <span class="nc">OncePerRequestFilter</span> <span class="o">{</span>
+<span class="o">...</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>使用<code class="highlighter-rouge">@Order</code>定义执行顺序,继承<code class="highlighter-rouge">OncePerRequestFilter</code>保证一次请求只通过一次filter</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+</pre></td><td class="rouge-code"><pre><span class="c1">//SessionRepositoryFilter.java</span>
+<span class="nd">@Override</span>
+<span class="kd">protected</span> <span class="kt">void</span> <span class="nf">doFilterInternal</span><span class="o">(</span><span class="nc">HttpServletRequest</span> <span class="n">request</span><span class="o">,</span>
+        <span class="nc">HttpServletResponse</span> <span class="n">response</span><span class="o">,</span> <span class="nc">FilterChain</span> <span class="n">filterChain</span><span class="o">)</span>
+        <span class="kd">throws</span> <span class="nc">ServletException</span><span class="o">,</span> <span class="nc">IOException</span> <span class="o">{</span>
+    <span class="n">request</span><span class="o">.</span><span class="na">setAttribute</span><span class="o">(</span><span class="no">SESSION_REPOSITORY_ATTR</span><span class="o">,</span> <span class="k">this</span><span class="o">.</span><span class="na">sessionRepository</span><span class="o">);</span>
+
+    <span class="nc">SessionRepositoryRequestWrapper</span> <span class="n">wrappedRequest</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">SessionRepositoryRequestWrapper</span><span class="o">(</span>
+            <span class="n">request</span><span class="o">,</span> <span class="n">response</span><span class="o">);</span>
+    <span class="nc">SessionRepositoryResponseWrapper</span> <span class="n">wrappedResponse</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">SessionRepositoryResponseWrapper</span><span class="o">(</span>
+            <span class="n">wrappedRequest</span><span class="o">,</span> <span class="n">response</span><span class="o">);</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>filter内部方法<code class="highlighter-rouge">doFilterInternal</code>中使用自定义的SessionRepositoryRequestWrapper,SessionRepositoryResponseWrapper包装下request和response。并且重写一些方法，<code class="highlighter-rouge">HttpServletRequest</code>中重要方法之一的<code class="highlighter-rouge">getSession</code>就进行重写了，如果跟着断点来，<code class="highlighter-rouge">getSession</code>也是必经的方法，具体详情我们后面在说。</p>
+
+<p>一个<code class="highlighter-rouge">doFilterInternal</code>方法中包含了后面几个重要的类，先放上几张关系图，算是混个眼熟。</p>
+
+<ul>
+  <li>
+    <h4 id="sessionrepositoryrequestwrapper和sessionrepositoryresponsewrapper">SessionRepositoryRequestWrapper和SessionRepositoryResponseWrapper</h4>
+  </li>
+</ul>
+
+<blockquote>
+  <p>封装的Request和Response有关的关系图</p>
+</blockquote>
+
+<p><img src="/img/spring-session/1.png" alt="1.png" /></p>
+
+<ul>
+  <li>
+    <h4 id="httpsessionwrapperjava">HttpSessionWrapper.java</h4>
+  </li>
+</ul>
+
+<blockquote>
+  <p>HttpSessionWrapper的关系图，本质上它就是对HttpSession的一个扩展替代</p>
+</blockquote>
+
+<p><img src="/img/spring-session/2.png" alt="1.png" /></p>
+
+<ul>
+  <li><code class="highlighter-rouge">Session.java</code>作为第顶级接口,提供了一些常规化的session操作，跟HttpSession方法大致相同</li>
+  <li><code class="highlighter-rouge">HttpSessionAdapter.java</code>适配器实现了<code class="highlighter-rouge">HttpSession</code>中的方法，将SpringSession的<code class="highlighter-rouge">Session.java</code>中方法适配servlet的<code class="highlighter-rouge">HttpSession.java</code>中的方法</li>
+  <li>
+    <p><code class="highlighter-rouge">HttpSessionWrapper.java</code>允许从session实例冲创建HttpSession。也是对session的一层包装。</p>
+  </li>
+  <li>
+    <h4 id="redisoperationssessionrepositoryjava">RedisOperationsSessionRepository.java</h4>
+    <blockquote>
+      <p>SpringSession的持久化,提供持三种久化方式jdbc,redis,hazelcast,后面只看redis这一种持久化方式。</p>
+    </blockquote>
+  </li>
+</ul>
+
+<p><img src="/img/spring-session/3.png" alt="3.png" /></p>
+
+<ul>
+  <li><code class="highlighter-rouge">SessionRepository.java</code> 用于管理session实例的存储,也是一些常规的操作接口。</li>
+  <li><code class="highlighter-rouge">FindByIndexNameSessionRepository.java</code>是对SessionRepository的扩展， 获取session用。</li>
+  <li><code class="highlighter-rouge">MessageListener.java</code>是跟redis消息监听有关。</li>
+  <li><code class="highlighter-rouge">RedisOperationsSessionRepository.java</code>是具体实现上面接口方法的类。</li>
+</ul>
+
+:ET

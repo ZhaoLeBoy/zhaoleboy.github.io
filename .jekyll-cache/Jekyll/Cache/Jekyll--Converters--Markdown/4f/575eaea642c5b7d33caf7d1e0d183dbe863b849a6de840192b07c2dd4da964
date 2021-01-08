@@ -1,0 +1,145 @@
+I"�/<p>先上部分代码，这块代码就是服务端启动demo的一部分，这篇文章就是对这块代码进行描述</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+</pre></td><td class="rouge-code"><pre><span class="o">...</span>
+<span class="nc">ServerBootstrap</span> <span class="n">serverBootstrap</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ServerBootstrap</span><span class="o">();</span>
+<span class="n">serverBootstrap</span><span class="o">.</span><span class="na">group</span><span class="o">(</span><span class="n">bossGroup</span><span class="o">,</span> <span class="n">wordGroup</span><span class="o">)</span>
+  <span class="o">.</span><span class="na">channel</span><span class="o">(</span><span class="nc">NioServerSocketChannel</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+  <span class="o">.</span><span class="na">childHandler</span><span class="o">(</span><span class="k">new</span> <span class="nc">ChannelInitializer</span><span class="o">&lt;</span><span class="nc">SocketChannel</span><span class="o">&gt;()</span> <span class="o">{</span> 
+    <span class="nd">@Override</span>
+    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">initChannel</span><span class="o">(</span><span class="nc">SocketChannel</span> <span class="n">ch</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+      <span class="nc">ChannelPipeline</span> <span class="n">pipeline</span> <span class="o">=</span> <span class="n">ch</span><span class="o">.</span><span class="na">pipeline</span><span class="o">();</span>
+      <span class="o">...</span>
+    <span class="o">}</span>
+  <span class="o">});</span>
+<span class="o">...</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<h3 id="概述">概述</h3>
+<ol>
+  <li>实例化<code class="highlighter-rouge">ServerBootstrap</code>。</li>
+  <li><code class="highlighter-rouge">ServerBootstrap</code>链式调用</li>
+</ol>
+
+<h3 id="1实例化serverbootstrap">1.实例化<code class="highlighter-rouge">ServerBootstrap</code>。</h3>
+<p>实例化<code class="highlighter-rouge">ServerBootstrap</code>，其实内部是个空的构造方法，文档中对其解释是<code class="highlighter-rouge">ServerBootstrap</code>这个类是<code class="highlighter-rouge">BootStrap</code>的子类，允许便捷的启动<code class="highlighter-rouge">ServerChannel</code> 。
+其实<code class="highlighter-rouge">ServerBootstrap</code>和<code class="highlighter-rouge">BootStrap</code>的关系如下图，并没有直接继承关系，总感觉描述应该是<code class="highlighter-rouge">ServerBootstrap</code>和<code class="highlighter-rouge">BootStrap</code>都是同级的子类。</p>
+
+<p><img src="/img/netty/1-2/1.jpg" alt="IMAGE" /></p>
+
+<p><code class="highlighter-rouge">ServerChannel</code>是一个标记接口，用于对类进行标识。<code class="highlighter-rouge">ServerChannel</code>是一个Channel用于接受另一端发来的连 接，并通过接受来创建它的子Channel(就是连接的Channel)</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre>  <span class="kd">public</span> <span class="kd">interface</span> <span class="nc">ServerChannel</span> <span class="kd">extends</span> <span class="nc">Channel</span> <span class="o">{</span>
+      <span class="c1">// This is a tag interface.</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h3 id="2-serverbootstrap链式调用">2. ServerBootstrap链式调用</h3>
+<ul>
+  <li><code class="highlighter-rouge"> group(EventLoopGroup parentGroup, EventLoopGroup childGroup)</code>
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="rouge-code"><pre>    <span class="c1">//ServerBootStrap.java</span>
+<span class="kd">public</span> <span class="nc">ServerBootstrap</span> <span class="nf">group</span><span class="o">(</span><span class="nc">EventLoopGroup</span> <span class="n">parentGroup</span><span class="o">,</span> <span class="nc">EventLoopGroup</span> <span class="n">childGroup</span><span class="o">)</span> <span class="o">{</span>
+  <span class="kd">super</span><span class="o">.</span><span class="na">group</span><span class="o">(</span><span class="n">parentGroup</span><span class="o">);</span>
+  <span class="o">...</span>
+  <span class="k">this</span><span class="o">.</span><span class="na">childGroup</span> <span class="o">=</span> <span class="n">childGroup</span><span class="o">;</span>
+  <span class="k">return</span> <span class="k">this</span><span class="o">;</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+    <p>设置服务端(acceptor)和客户端的EventLoopGroup，这些EventLoopGroup用于处理跟ServerChannel和Channel的所有事件和IO，方法里面做了非空判断和给成员变量赋值。</p>
+    <ul>
+      <li>【3】parentGroup作为参数传入到父类
+        <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre></td><td class="rouge-code"><pre>  <span class="c1">//AbstractBootstrap.java</span>
+  <span class="kd">public</span> <span class="no">B</span> <span class="nf">group</span><span class="o">(</span><span class="nc">EventLoopGroup</span> <span class="n">group</span><span class="o">)</span> <span class="o">{</span>
+  <span class="o">...</span>
+  <span class="k">this</span><span class="o">.</span><span class="na">group</span> <span class="o">=</span> <span class="n">group</span><span class="o">;</span>
+  <span class="k">return</span> <span class="nf">self</span><span class="o">();</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>        </div>
+        <p>父类goup方法意义是这个<code class="highlighter-rouge">EventLoopGroup</code>用于处理将要创建的Channel的所有事件，由子类传入的是<code class="highlighter-rouge">parentGroup</code>，所以它是用于处理所有的跟客户端连接有关的事件。方法里也是做非空判断和给成员变量赋值。</p>
+      </li>
+    </ul>
+  </li>
+  <li><code class="highlighter-rouge">channel(Class&lt;? extends C&gt; channelClass)</code>
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class="rouge-code"><pre><span class="c1">//AbstractBootstrap.java</span>
+ <span class="kd">public</span> <span class="no">B</span> <span class="nf">channel</span><span class="o">(</span><span class="nc">Class</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="no">C</span><span class="o">&gt;</span> <span class="n">channelClass</span><span class="o">)</span> <span class="o">{</span>
+  <span class="o">...</span>
+  <span class="k">return</span> <span class="nf">channelFactory</span><span class="o">(</span><span class="k">new</span> <span class="nc">ReflectiveChannelFactory</span><span class="o">&lt;</span><span class="no">C</span><span class="o">&gt;(</span><span class="n">channelClass</span><span class="o">));</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+    <p>使用channelClass通过反射创建一个Channel实例，这个前提是这个Channel是要有无参的构造方法，如果有的话只能使用<code class="highlighter-rouge">channelFactory(io.netty.channel.ChannelFactory)</code>来获取实例。</p>
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class="rouge-code"><pre>  <span class="c1">//ReflectiveChannelFactory.java</span>
+   <span class="kd">public</span> <span class="nf">ReflectiveChannelFactory</span><span class="o">(</span><span class="nc">Class</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="no">T</span><span class="o">&gt;</span> <span class="n">clazz</span><span class="o">)</span> <span class="o">{</span>
+    <span class="o">...</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">clazz</span> <span class="o">=</span> <span class="n">clazz</span><span class="o">;</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+    <p><code class="highlighter-rouge">ReflectiveChannelFactory</code>是一个Channel工厂类，是通过反射形式创建有一个Channel实例。这个方法里只是做个简单的成员变量赋值</p>
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre></td><td class="rouge-code"><pre>  <span class="c1">//AbstractBootstrap.java</span>
+  <span class="kd">public</span> <span class="no">B</span> <span class="nf">channelFactory</span><span class="o">(</span><span class="nc">ChannelFactory</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="no">C</span><span class="o">&gt;</span> <span class="n">channelFactory</span><span class="o">)</span> <span class="o">{</span>
+    <span class="o">...</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">channelFactory</span> <span class="o">=</span> <span class="n">channelFactory</span><span class="o">;</span>
+    <span class="k">return</span> <span class="nf">self</span><span class="o">();</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+    <p>只有当调用<code class="highlighter-rouge">bind</code>方法（见demo），ChannelFactory才会去创建一个channel实例，所以现在只是设置好成员变量。
+  最后对通过反射实例化的<code class="highlighter-rouge">NioServerSocketChannel</code>这个类的无参构造方法究竟做了什么请看<a href="http://jinlipool.com/2019/01/27/netty-1-2-1-NioServerSocketChannel-construct/">【1-2-1.Netty源码:服务端NioServerSocketChanne构造方法】</a></p>
+  </li>
+  <li><code class="highlighter-rouge">childHandler(ChannelHandler childHandler)</code>
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class="rouge-code"><pre><span class="kd">public</span> <span class="nc">ServerBootstrap</span> <span class="nf">childHandler</span><span class="o">(</span><span class="nc">ChannelHandler</span> <span class="n">childHandler</span><span class="o">)</span> <span class="o">{</span>
+  <span class="o">...</span>
+  <span class="k">this</span><span class="o">.</span><span class="na">childHandler</span> <span class="o">=</span> <span class="n">childHandler</span><span class="o">;</span>
+  <span class="k">return</span> <span class="k">this</span><span class="o">;</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+    <p>设置ChannelHandler，专门服务于Channel的请求。这个方法里只是做个简单的成员变量赋值。</p>
+  </li>
+</ul>
+
+<p>到此为止ServerBootStrap所必须的成员变量也设置好，纵观这个方法链，大部分是都做了非空判断+成员变量赋值再然后就是一些构建一些工厂。这些工厂和成员变量都是为后面<code class="highlighter-rouge">bind</code>启动来服务的。</p>
+
+:ET

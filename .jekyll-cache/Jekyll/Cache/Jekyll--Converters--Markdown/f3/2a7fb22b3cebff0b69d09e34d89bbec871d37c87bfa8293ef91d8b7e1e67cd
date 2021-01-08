@@ -1,0 +1,155 @@
+I"�,<h3 id="初始化并且注册一个服务端的channel">初始化并且注册一个服务端的Channel</h3>
+<blockquote>
+  <p>服务端的channel是通过反射创建出来的</p>
+</blockquote>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+</pre></td><td class="rouge-code"><pre><span class="c1">//AbstractBootstrap.java</span>
+<span class="kd">final</span> <span class="nc">ChannelFuture</span> <span class="nf">initAndRegister</span><span class="o">()</span> <span class="o">{</span>
+  <span class="nc">Channel</span> <span class="n">channel</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+  <span class="k">try</span> <span class="o">{</span>
+      <span class="n">channel</span> <span class="o">=</span> <span class="n">channelFactory</span><span class="o">.</span><span class="na">newChannel</span><span class="o">();</span>
+      <span class="n">init</span><span class="o">(</span><span class="n">channel</span><span class="o">);</span>
+  <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Throwable</span> <span class="n">t</span><span class="o">)</span> <span class="o">{</span>
+  <span class="o">...</span>
+  <span class="o">}</span>
+
+  <span class="nc">ChannelFuture</span> <span class="n">regFuture</span> <span class="o">=</span> <span class="n">config</span><span class="o">().</span><span class="na">group</span><span class="o">().</span><span class="na">register</span><span class="o">(</span><span class="n">channel</span><span class="o">);</span>
+   <span class="k">return</span> <span class="n">regFuture</span><span class="o">;</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<ul>
+  <li>【4】通过反射来创建channel的这个反射的类就是在启动代码里<code class="highlighter-rouge">.channel(NioServerSocketChannel.class)</code>里设置的<code class="highlighter-rouge">NioServerSocketChannel</code>的类,反射调用这个类的构造函数进行初始化,具体方法见<a href="http://jinlipool.com/2019/01/27/netty-1-2-1-NioServerSocketChannel-construct/">【1-2-1.Netty源码:服务端NioServerSocketChanne构造方法】</a></li>
+  <li>
+    <p>【6】初始化channel，具体初始化的方法在<code class="highlighter-rouge">ServerBootstrap#init()</code>中</p>
+
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+</pre></td><td class="rouge-code"><pre><span class="c1">//ServerBootstrap.java</span>
+ <span class="kt">void</span>  <span class="nf">init</span><span class="o">(</span><span class="nc">Channel</span> <span class="n">channel</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+  <span class="kd">final</span> <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">ChannelOption</span><span class="o">&lt;?&gt;,</span> <span class="nc">Object</span><span class="o">&gt;</span> <span class="n">options</span> <span class="o">=</span> <span class="n">options0</span><span class="o">();</span>
+  <span class="kd">synchronized</span> <span class="o">(</span><span class="n">options</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">setChannelOptions</span><span class="o">(</span><span class="n">channel</span><span class="o">,</span> <span class="n">options</span><span class="o">,</span> <span class="n">logger</span><span class="o">);</span>
+  <span class="o">}</span>
+
+  <span class="kd">final</span> <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">AttributeKey</span><span class="o">&lt;?&gt;,</span> <span class="nc">Object</span><span class="o">&gt;</span> <span class="n">attrs</span> <span class="o">=</span> <span class="n">attrs0</span><span class="o">();</span>
+  <span class="kd">synchronized</span> <span class="o">(</span><span class="n">attrs</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">for</span> <span class="o">(</span><span class="nc">Entry</span><span class="o">&lt;</span><span class="nc">AttributeKey</span><span class="o">&lt;?&gt;,</span> <span class="nc">Object</span><span class="o">&gt;</span> <span class="nl">e:</span> <span class="n">attrs</span><span class="o">.</span><span class="na">entrySet</span><span class="o">())</span> <span class="o">{</span>
+          <span class="nd">@SuppressWarnings</span><span class="o">(</span><span class="s">"unchecked"</span><span class="o">)</span>
+          <span class="nc">AttributeKey</span><span class="o">&lt;</span><span class="nc">Object</span><span class="o">&gt;</span> <span class="n">key</span> <span class="o">=</span> <span class="o">(</span><span class="nc">AttributeKey</span><span class="o">&lt;</span><span class="nc">Object</span><span class="o">&gt;)</span> <span class="n">e</span><span class="o">.</span><span class="na">getKey</span><span class="o">();</span>
+          <span class="n">channel</span><span class="o">.</span><span class="na">attr</span><span class="o">(</span><span class="n">key</span><span class="o">).</span><span class="na">set</span><span class="o">(</span><span class="n">e</span><span class="o">.</span><span class="na">getValue</span><span class="o">());</span>
+      <span class="o">}</span>
+  <span class="o">}</span>
+
+  <span class="nc">ChannelPipeline</span> <span class="n">p</span> <span class="o">=</span> <span class="n">channel</span><span class="o">.</span><span class="na">pipeline</span><span class="o">();</span>
+
+  <span class="c1">//设置新channel的channeloptions</span>
+  <span class="kd">synchronized</span> <span class="o">(</span><span class="n">childOptions</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">currentChildOptions</span> <span class="o">=</span> <span class="n">childOptions</span><span class="o">.</span><span class="na">entrySet</span><span class="o">().</span><span class="na">toArray</span><span class="o">(</span><span class="n">newOptionArray</span><span class="o">(</span><span class="mi">0</span><span class="o">));</span>
+  <span class="o">}</span>
+  <span class="c1">//设置新channelchanneloptions</span>
+  <span class="kd">synchronized</span> <span class="o">(</span><span class="n">childAttrs</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">currentChildAttrs</span> <span class="o">=</span> <span class="n">childAttrs</span><span class="o">.</span><span class="na">entrySet</span><span class="o">().</span><span class="na">toArray</span><span class="o">(</span><span class="n">newAttrArray</span><span class="o">(</span><span class="mi">0</span><span class="o">));</span>
+  <span class="o">}</span>
+
+  <span class="n">p</span><span class="o">.</span><span class="na">addLast</span><span class="o">(</span><span class="k">new</span> <span class="nc">ChannelInitializer</span><span class="o">&lt;</span><span class="nc">Channel</span><span class="o">&gt;()</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">initChannel</span><span class="o">(</span><span class="kd">final</span> <span class="nc">Channel</span> <span class="n">ch</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+      <span class="kd">final</span> <span class="nc">ChannelPipeline</span> <span class="n">pipeline</span> <span class="o">=</span> <span class="n">ch</span><span class="o">.</span><span class="na">pipeline</span><span class="o">();</span>
+      <span class="nc">ChannelHandler</span> <span class="n">handler</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="na">handler</span><span class="o">();</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">handler</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span> 
+          <span class="n">pipeline</span><span class="o">.</span><span class="na">addLast</span><span class="o">(</span><span class="n">handler</span><span class="o">);</span>
+      <span class="o">}</span>
+         
+      <span class="n">ch</span><span class="o">.</span><span class="na">eventLoop</span><span class="o">().</span><span class="na">execute</span><span class="o">(</span><span class="k">new</span> <span class="nc">Runnable</span><span class="o">()</span> <span class="o">{</span>
+        <span class="nd">@Override</span>
+        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+          <span class="c1">//跟新连接接入有关，把新连接绑定到新的NioEventLoop线程上去</span>
+            <span class="n">pipeline</span><span class="o">.</span><span class="na">addLast</span><span class="o">(</span><span class="k">new</span> <span class="nc">ServerBootstrapAcceptor</span><span class="o">(</span>
+                    <span class="n">ch</span><span class="o">,</span> <span class="n">currentChildGroup</span><span class="o">,</span> <span class="n">currentChildHandler</span><span class="o">,</span> <span class="n">currentChildOptions</span><span class="o">,</span> <span class="n">currentChildAttrs</span><span class="o">));</span>
+        <span class="o">}</span>
+      <span class="o">});</span>
+    <span class="o">}</span>
+  <span class="o">});</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+    <ul>
+      <li>【3-15】设置服务端channel的option和attrs,这些配置都是在启动代码中用户自行定义的好的。将option绑定到服务端channel<code class="highlighter-rouge">NioServerSocketChannel</code>中的<code class="highlighter-rouge">ServerSocketChannelConfig</code>去。</li>
+      <li>【17】获取这个channel的管道对象。</li>
+      <li>【19-26】保存用户自定义的childOptions和childAttrs到局部变量。</li>
+      <li>【29-46】在管道(pipeline)对象最后面新增ChannelInitializer的实例。
+*【32】添加用户自定义个handle ,这个handler是由用户在demo的方法链中实现了。专门处理跟bossgoup有关（跟childHandler专门处理workgroup类似）
+*【37-43】服务端启动时候在最后默认会添加<code class="highlighter-rouge">ServerBootstrapAcceptor</code>，类似Reactor模型的Acceptor
+        <ol>
+          <li>currentChildOptions,currentChildAttrs用户自定设置的属性。</li>
+          <li>currentChildHandler也是用户在代码中设置e.g. ` .childHandler(new ChannelInitializer<SocketChannel>() {...})`</SocketChannel></li>
+          <li>currentChildGroup就是用户代码中的<code class="highlighter-rouge">workerGroup</code></li>
+        </ol>
+      </li>
+    </ul>
+  </li>
+  <li>【10】详细见<a href="http://jinlipool.com/2019/01/29/netty-2-1-2-server-channel-register/">【2-1-2.Netty源码:注册服务端channel】</a></li>
+</ul>
+
+<hr />
+<p>TODO:ChannelInitializer没有做说明</p>
+
+:ET

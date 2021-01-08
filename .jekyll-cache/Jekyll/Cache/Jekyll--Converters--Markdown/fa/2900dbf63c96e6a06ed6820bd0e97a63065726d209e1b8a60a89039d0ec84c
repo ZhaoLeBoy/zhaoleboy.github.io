@@ -1,0 +1,175 @@
+I"�9<p>逻辑跟InBound类似。</p>
+
+<p>首先自定义三个outBound处理器</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+</pre></td><td class="rouge-code"><pre><span class="c1">//OutBoundA</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">OutBoundA</span> <span class="kd">extends</span> <span class="nc">ChannelOutboundHandlerAdapter</span> <span class="o">{</span>
+  <span class="nd">@Override</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">write</span><span class="o">(</span><span class="nc">ChannelHandlerContext</span> <span class="n">ctx</span><span class="o">,</span> <span class="nc">Object</span> <span class="n">msg</span><span class="o">,</span> <span class="nc">ChannelPromise</span> <span class="n">promise</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+      <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"OutBoundA "</span> <span class="o">+</span> <span class="n">msg</span><span class="o">);</span>
+      <span class="n">ctx</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="n">msg</span><span class="o">,</span> <span class="n">promise</span><span class="o">);</span>
+  <span class="o">}</span>
+  
+  <span class="nd">@Override</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handlerAdded</span><span class="o">(</span><span class="nc">ChannelHandlerContext</span> <span class="n">ctx</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+      <span class="n">ctx</span><span class="o">.</span><span class="na">executor</span><span class="o">().</span><span class="na">schedule</span><span class="o">(()</span> <span class="o">-&gt;</span> <span class="o">{</span>
+      <span class="c1">//模拟服务端给客户端写的数据</span>
+          <span class="n">ctx</span><span class="o">.</span><span class="na">channel</span><span class="o">().</span><span class="na">pipeline</span><span class="o">().</span><span class="na">write</span><span class="o">(</span><span class="s">"write ing"</span><span class="o">);</span>
+      <span class="o">},</span> <span class="mi">5</span><span class="o">,</span> <span class="nc">TimeUnit</span><span class="o">.</span><span class="na">SECONDS</span><span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c1">//OutBoundB</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">OutBoundB</span> <span class="kd">extends</span> <span class="nc">ChannelOutboundHandlerAdapter</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">write</span><span class="o">(</span><span class="nc">ChannelHandlerContext</span> <span class="n">ctx</span><span class="o">,</span> <span class="nc">Object</span> <span class="n">msg</span><span class="o">,</span> <span class="nc">ChannelPromise</span> <span class="n">promise</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+        <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"OutBoundB "</span> <span class="o">+</span> <span class="n">msg</span><span class="o">);</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="n">msg</span><span class="o">,</span> <span class="n">promise</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c1">//OutBoundC</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">OutBoundC</span> <span class="kd">extends</span> <span class="nc">ChannelOutboundHandlerAdapter</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">write</span><span class="o">(</span><span class="nc">ChannelHandlerContext</span> <span class="n">ctx</span><span class="o">,</span> <span class="nc">Object</span> <span class="n">msg</span><span class="o">,</span> <span class="nc">ChannelPromise</span> <span class="n">promise</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+        <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"OutBoundC "</span> <span class="o">+</span> <span class="n">msg</span><span class="o">);</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="n">msg</span><span class="o">,</span> <span class="n">promise</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>OutBound事件是按照ChannelHandler的反向进行执行的。
+<img src="/img/netty/5-4/1.jpg" alt="IMAGE" />
+从tail节点的<code class="highlighter-rouge">write</code>开始，使用debug方式启动服务器端，然后在使用客户端连接(下面代码有删减，只保留传播流程中部分代码）。</p>
+
+<p>当有新连接来到的时候，OutBoundA<code class="highlighter-rouge">handlerAdded</code>方法触发，事件从调用<code class="highlighter-rouge">write</code>开始传播。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class="rouge-code"><pre><span class="c1">//DefaultChannelPipeline.java</span>
+<span class="kd">public</span> <span class="kd">final</span> <span class="nc">ChannelFuture</span> <span class="nf">write</span><span class="o">(</span><span class="nc">Object</span> <span class="n">msg</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">return</span> <span class="n">tail</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="n">msg</span><span class="o">);</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<ul>
+  <li>【3】注意这个tail说明事件是从tail开始传播的。tail则是在创建pipeline时候已经创建好了</li>
+</ul>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+</pre></td><td class="rouge-code"><pre><span class="c1">//AbstractChannelHandlerContext.java</span>
+<span class="kd">public</span> <span class="nc">ChannelFuture</span> <span class="nf">write</span><span class="o">(</span><span class="nc">Object</span> <span class="n">msg</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="nf">write</span><span class="o">(</span><span class="n">msg</span><span class="o">,</span> <span class="n">newPromise</span><span class="o">());</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="nc">ChannelFuture</span> <span class="nf">write</span><span class="o">(</span><span class="kd">final</span> <span class="nc">Object</span> <span class="n">msg</span><span class="o">,</span> <span class="kd">final</span> <span class="nc">ChannelPromise</span> <span class="n">promise</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">write</span><span class="o">(</span><span class="n">msg</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="n">promise</span><span class="o">);</span>
+  <span class="k">return</span> <span class="n">promise</span><span class="o">;</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class="rouge-code"><pre><span class="kd">private</span> <span class="kt">void</span> <span class="nf">write</span><span class="o">(</span><span class="nc">Object</span> <span class="n">msg</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">flush</span><span class="o">,</span> <span class="nc">ChannelPromise</span> <span class="n">promise</span><span class="o">)</span> <span class="o">{</span>
+    <span class="nc">AbstractChannelHandlerContext</span> <span class="n">next</span> <span class="o">=</span> <span class="n">findContextOutbound</span><span class="o">();</span>
+    <span class="kd">final</span> <span class="nc">Object</span> <span class="n">m</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="na">touch</span><span class="o">(</span><span class="n">msg</span><span class="o">,</span> <span class="n">next</span><span class="o">);</span>
+    <span class="n">next</span><span class="o">.</span><span class="na">invokeWrite</span><span class="o">(</span><span class="n">m</span><span class="o">,</span> <span class="n">promise</span><span class="o">);</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<ul>
+  <li>【2】while循环找之前一个是OutBound的节点并且返回
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="rouge-code"><pre>  <span class="kd">private</span> <span class="nc">AbstractChannelHandlerContext</span> <span class="nf">findContextOutbound</span><span class="o">()</span> <span class="o">{</span>
+    <span class="nc">AbstractChannelHandlerContext</span> <span class="n">ctx</span> <span class="o">=</span> <span class="k">this</span><span class="o">;</span>
+    <span class="k">do</span> <span class="o">{</span>
+        <span class="n">ctx</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="na">prev</span><span class="o">;</span>
+    <span class="o">}</span> <span class="k">while</span> <span class="o">(!</span><span class="n">ctx</span><span class="o">.</span><span class="na">outbound</span><span class="o">);</span>
+    <span class="k">return</span> <span class="n">ctx</span><span class="o">;</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+  </li>
+</ul>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class="rouge-code"><pre><span class="c1">//AbstractChannelHandlerContext.java</span>
+<span class="kd">private</span> <span class="kt">void</span> <span class="nf">invokeWrite</span><span class="o">(</span><span class="nc">Object</span> <span class="n">msg</span><span class="o">,</span> <span class="nc">ChannelPromise</span> <span class="n">promise</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">invokeWrite0</span><span class="o">(</span><span class="n">msg</span><span class="o">,</span> <span class="n">promise</span><span class="o">);</span>
+<span class="o">}</span>
+
+<span class="kd">private</span> <span class="kt">void</span> <span class="nf">invokeWrite0</span><span class="o">(</span><span class="nc">Object</span> <span class="n">msg</span><span class="o">,</span> <span class="nc">ChannelPromise</span> <span class="n">promise</span><span class="o">)</span> <span class="o">{</span>
+  <span class="o">((</span><span class="nc">ChannelOutboundHandler</span><span class="o">)</span> <span class="n">handler</span><span class="o">()).</span><span class="na">write</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">msg</span><span class="o">,</span> <span class="n">promise</span><span class="o">);</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>调用到服务器端中<code class="highlighter-rouge">OutBoundC#write()</code>然后在方法内部继续调用<code class="highlighter-rouge">ctx.write(msg, promise)</code>向上传播，继续调用上述的几个方法直到进去head节点。
+需要说明的是<code class="highlighter-rouge">ctx.channel().pipeline().write()</code>是从tail节点向上进行事件传播
+<code class="highlighter-rouge">ctx.write()</code>是从当前节点向上进行事件传播。</p>
+
+<p>一直在最后到head的节点。会调用<code class="highlighter-rouge">HeadContext</code>中的write方法</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class="rouge-code"><pre><span class="c1">//DefaultChannelPipeline.java</span>
+<span class="kd">public</span> <span class="kt">void</span> <span class="nf">write</span><span class="o">(</span><span class="nc">ChannelHandlerContext</span> <span class="n">ctx</span><span class="o">,</span> <span class="nc">Object</span> <span class="n">msg</span><span class="o">,</span> <span class="nc">ChannelPromise</span> <span class="n">promise</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+  <span class="n">unsafe</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="n">msg</span><span class="o">,</span> <span class="n">promise</span><span class="o">);</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>如果一直没有找到有用的handler，就会在head节点调用这个方法<code class="highlighter-rouge">unsafe.write(msg, promise);</code>，最后msg是实现<code class="highlighter-rouge">ReferenceCounted</code>接口的消息类型类型(也就是ByteBuf)，那么传到tail节点后会被释放掉(引用计数减一)。</p>
+:ET

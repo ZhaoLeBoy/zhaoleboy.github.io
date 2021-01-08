@@ -1,0 +1,5 @@
+I"T<p>ReentrantLock默认是用非公平锁，具体文章见<a href="http://jinlipool.com/2019/10/14/reetrantlock_lock2/">2.ReentrantLock-独占锁</a>
+那么公平锁是怎么实现的，它跟非公平锁到底有什么区别。
+其实公平锁和非公平锁的实现几乎一样。只有在加锁有一出不同。公平锁会多出一个<code class="highlighter-rouge">hasQueuedPredecessors()</code>方法。如下图，左边是公平锁获取方式，右边是非公平锁获取方式。
+<img src="/img/lock/reetrantlock/reentrantlock-code.png" alt="dd1c6b8ee22bff9043e9072e33f48892" /></p>
+:ET

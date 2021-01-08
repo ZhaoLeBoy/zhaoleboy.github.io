@@ -1,0 +1,554 @@
+I"��<p>交换机的功能主要接受消息并且转发到绑定的队列，交换机不存储信息。交换机找不到队列会返回错误，交换机有四种类型：
+Direct：默认模式，绑在routing key,只有匹配时，才会被交换器投送到绑定的队列中去。
+Topic：按照规则转发消息
+Headers：设置 header attribute 参数类型的交换机(暂时没用过)
+Fanout：转发消息到所有绑定队列</p>
+
+<p>任何发送到Direct Exchange的消息都会被转发到RouteKey中指定的Queue。</p>
+
+<blockquote>
+  <p>版本号</p>
+  <ul>
+    <li>Spring Boot: 2.1.5.RELEASE</li>
+    <li>RabbitMQ: 2.1.4.RELEASE</li>
+  </ul>
+</blockquote>
+
+<hr />
+<blockquote>
+  <p>application.properties</p>
+  <div class="language-properties highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class="rouge-code"><pre><span class="py">spring.rabbitmq.host</span><span class="p">=</span><span class="s">127.0.0.1</span>
+<span class="py">spring.rabbitmq.port</span><span class="p">=</span><span class="s">5672</span>
+<span class="py">spring.rabbitmq.username</span><span class="p">=</span><span class="s">guest</span>
+<span class="py">spring.rabbitmq.password</span><span class="p">=</span><span class="s">guest</span>
+</pre></td></tr></tbody></table></code></pre></div>  </div>
+</blockquote>
+
+<h4 id="direct-exchange">Direct Exchange</h4>
+
+<p><code class="highlighter-rouge">Direct Exchange</code>是<code class="highlighter-rouge">RabbitMQ</code>默认的交换器，根据<code class="highlighter-rouge">key</code>全匹配找队列
+#表示匹配0个或若干个关键字，*表示匹配一个关键字.</p>
+
+<h5 id="配置代码">配置代码</h5>
+<div class="language-properties highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class="rouge-code"><pre><span class="c">#交换机名称
+</span><span class="py">mq.key.direct-exchange</span><span class="p">=</span><span class="s">direct-exchange</span>
+<span class="c">#路由器key
+</span><span class="py">mq.direct.route-key</span><span class="p">=</span><span class="s">test-direct-route-key</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+</pre></td><td class="rouge-code"><pre><span class="nd">@Configuration</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">RabbitConfig</span> <span class="o">{</span>
+    <span class="nd">@Autowired</span>
+    <span class="nc">Environment</span> <span class="n">env</span><span class="o">;</span>
+
+    <span class="nd">@Bean</span>
+    <span class="kd">public</span> <span class="nc">Queue</span> <span class="nf">directQueue</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">Queue</span><span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">getProperty</span><span class="o">(</span><span class="s">"mq.direct.route-key"</span><span class="o">));</span>
+    <span class="o">}</span>
+    
+    <span class="cm">/***********Direct(默认 ，可以不配置)***********/</span>
+    <span class="nd">@Bean</span>
+    <span class="kd">public</span> <span class="nc">DirectExchange</span> <span class="nf">directExchange</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">DirectExchange</span><span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">getProperty</span><span class="o">(</span><span class="s">"mq.key.direct-exchange"</span><span class="o">));</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Bean</span>
+    <span class="kd">public</span> <span class="nc">Binding</span> <span class="nf">bindExchangeDirectQueue</span><span class="o">()</span> <span class="o">{</span>
+        <span class="c1">//根据key 绑定队列到交换机</span>
+        <span class="k">return</span> <span class="nc">BindingBuilder</span><span class="o">.</span><span class="na">bind</span><span class="o">(</span><span class="n">directQueue</span><span class="o">()).</span><span class="na">to</span><span class="o">(</span><span class="n">directExchange</span><span class="o">()).</span><span class="na">with</span><span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">getProperty</span><span class="o">(</span><span class="s">"mq.direct.route-key"</span><span class="o">));</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h5 id="消费者代码">消费者代码</h5>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="rouge-code"><pre><span class="nd">@Component</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">DirectConsumer</span> <span class="o">{</span>
+    <span class="nd">@RabbitListener</span><span class="o">(</span><span class="n">queues</span> <span class="o">=</span> <span class="s">"${mq.direct.route-key}"</span><span class="o">)</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">directListener</span><span class="o">(</span><span class="nc">String</span> <span class="n">message</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">message</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h5 id="测试代码">测试代码</h5>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+</pre></td><td class="rouge-code"><pre><span class="nd">@RunWith</span><span class="o">(</span><span class="nc">SpringRunner</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+<span class="nd">@SpringBootTest</span><span class="o">(</span><span class="n">classes</span> <span class="o">=</span> <span class="nc">DemoApplication</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">SenderTemp</span> <span class="o">{</span>
+
+    <span class="nd">@Autowired</span>
+    <span class="kd">private</span> <span class="nc">AmqpTemplate</span> <span class="n">amqpTemplate</span><span class="o">;</span>
+    <span class="nd">@Autowired</span>
+    <span class="kd">private</span> <span class="nc">Environment</span> <span class="n">env</span><span class="o">;</span>
+
+    <span class="kd">static</span> <span class="nc">String</span> <span class="n">context_temp</span> <span class="o">=</span> <span class="s">"交换机:%s\n路由：%s\n内容：%s"</span><span class="o">;</span>
+
+    <span class="nd">@Test</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">sendDirectMsg</span><span class="o">()</span> <span class="o">{</span>
+        <span class="nc">String</span> <span class="n">context</span> <span class="o">=</span> <span class="s">"Hello,Direct Msg"</span><span class="o">;</span>
+        <span class="nc">String</span> <span class="n">routeKey</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="na">getProperty</span><span class="o">(</span><span class="s">"mq.direct.route-key"</span><span class="o">);</span>
+        <span class="nc">String</span> <span class="n">exchangeName</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="na">getProperty</span><span class="o">(</span><span class="s">"mq.key.direct-exchange"</span><span class="o">);</span>
+        <span class="nc">String</span> <span class="n">msg</span> <span class="o">=</span> <span class="nc">String</span><span class="o">.</span><span class="na">format</span><span class="o">(</span><span class="n">context_temp</span><span class="o">,</span> <span class="n">exchangeName</span><span class="o">,</span> <span class="n">routeKey</span><span class="o">,</span> <span class="n">context</span><span class="o">);</span>
+        <span class="n">amqpTemplate</span><span class="o">.</span><span class="na">convertAndSend</span><span class="o">(</span><span class="n">routeKey</span><span class="o">,</span> <span class="n">msg</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h5 id="输出结果">输出结果</h5>
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre>交换机:direct-exchange
+路由：test-direct-route-key
+内容：Hello,Direct Msg
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h4 id="fanout-exchange">Fanout Exchange</h4>
+
+<p>任何发送到<code class="highlighter-rouge">Fanout Exchange</code>的消息转发到与Exchange绑定的所有队列</p>
+
+<h5 id="配置代码-1">配置代码</h5>
+<div class="language-properties highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre><span class="py">mq.key.fanout-exchange</span><span class="p">=</span><span class="s">fanout-exchange</span>
+<span class="py">mq.fanout.route-key-1</span><span class="p">=</span><span class="s">test-fanout-route-key-1</span>
+<span class="py">mq.fanout.route-key-2</span><span class="p">=</span><span class="s">test-fanout-route-key-2</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+</pre></td><td class="rouge-code"><pre><span class="nd">@Configuration</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">RabbitConfig</span> <span class="o">{</span>
+
+    <span class="nd">@Autowired</span>
+    <span class="nc">Environment</span> <span class="n">env</span><span class="o">;</span>
+
+    <span class="nd">@Bean</span>
+    <span class="kd">public</span> <span class="nc">Queue</span> <span class="nf">fanoutQueue1</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">Queue</span><span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">getProperty</span><span class="o">(</span><span class="s">"mq.fanout.route-key-1"</span><span class="o">));</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Bean</span>
+    <span class="kd">public</span> <span class="nc">Queue</span> <span class="nf">fanoutQueue2</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">Queue</span><span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">getProperty</span><span class="o">(</span><span class="s">"mq.fanout.route-key-2"</span><span class="o">));</span>
+    <span class="o">}</span>
+
+ <span class="cm">/***********Fanout***********/</span>
+    <span class="nd">@Bean</span>
+    <span class="kd">public</span> <span class="nc">FanoutExchange</span> <span class="nf">fanoutExchange</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">FanoutExchange</span><span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">getProperty</span><span class="o">(</span><span class="s">"mq.key.fanout-exchange"</span><span class="o">));</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Bean</span>
+    <span class="kd">public</span> <span class="nc">Binding</span> <span class="nf">bindExchangeFanout1Queue</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="nc">BindingBuilder</span><span class="o">.</span><span class="na">bind</span><span class="o">(</span><span class="n">fanoutQueue1</span><span class="o">()).</span><span class="na">to</span><span class="o">(</span><span class="n">fanoutExchange</span><span class="o">());</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Bean</span>
+    <span class="kd">public</span> <span class="nc">Binding</span> <span class="nf">bindExchangeFanout2Queue</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="nc">BindingBuilder</span><span class="o">.</span><span class="na">bind</span><span class="o">(</span><span class="n">fanoutQueue2</span><span class="o">()).</span><span class="na">to</span><span class="o">(</span><span class="n">fanoutExchange</span><span class="o">());</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h5 id="消费者代码-1">消费者代码</h5>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class="rouge-code"><pre><span class="nd">@Component</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">Fanout1Consumer</span> <span class="o">{</span>
+
+    <span class="nd">@RabbitListener</span><span class="o">(</span><span class="n">queues</span> <span class="o">=</span> <span class="s">"${mq.fanout.route-key-1}"</span><span class="o">)</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">directListener</span><span class="o">(</span><span class="nc">String</span> <span class="n">message</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"fanout1--&gt;"</span><span class="o">+</span><span class="n">message</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="rouge-code"><pre><span class="nd">@Component</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">Fanout2Consumer</span> <span class="o">{</span>
+    <span class="nd">@RabbitListener</span><span class="o">(</span><span class="n">queues</span> <span class="o">=</span> <span class="s">"${mq.fanout.route-key-2}"</span><span class="o">)</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">directListener</span><span class="o">(</span><span class="nc">String</span> <span class="n">message</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"fanout2--&gt;"</span><span class="o">+</span><span class="n">message</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h5 id="测试代码-1">测试代码</h5>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+</pre></td><td class="rouge-code"><pre><span class="nd">@RunWith</span><span class="o">(</span><span class="nc">SpringRunner</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+<span class="nd">@SpringBootTest</span><span class="o">(</span><span class="n">classes</span> <span class="o">=</span> <span class="nc">DemoApplication</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">SenderTemp</span> <span class="o">{</span>
+
+    <span class="nd">@Autowired</span>
+    <span class="kd">private</span> <span class="nc">AmqpTemplate</span> <span class="n">amqpTemplate</span><span class="o">;</span>
+    <span class="nd">@Autowired</span>
+    <span class="kd">private</span> <span class="nc">Environment</span> <span class="n">env</span><span class="o">;</span>
+
+    <span class="kd">static</span> <span class="nc">String</span> <span class="n">context_temp</span> <span class="o">=</span> <span class="s">"交换机:%s\n路由：%s\n内容：%s"</span><span class="o">;</span>
+
+    <span class="nd">@Test</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">doFanoutTask</span><span class="o">()</span> <span class="o">{</span>
+        <span class="nc">String</span> <span class="n">context</span> <span class="o">=</span> <span class="s">"Hello,Fanout Msg"</span><span class="o">;</span>
+        <span class="nc">String</span> <span class="n">routeKey</span> <span class="o">=</span> <span class="s">""</span><span class="o">;</span>
+        <span class="nc">String</span> <span class="n">exchangeName</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="na">getProperty</span><span class="o">(</span><span class="s">"mq.key.fanout-exchange"</span><span class="o">);</span>
+        <span class="nc">String</span> <span class="n">msg</span> <span class="o">=</span> <span class="nc">String</span><span class="o">.</span><span class="na">format</span><span class="o">(</span><span class="n">context_temp</span><span class="o">,</span> <span class="n">exchangeName</span><span class="o">,</span> <span class="n">routeKey</span><span class="o">,</span> <span class="n">context</span><span class="o">);</span>
+        <span class="n">amqpTemplate</span><span class="o">.</span><span class="na">convertAndSend</span><span class="o">(</span><span class="n">exchangeName</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="n">msg</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h5 id="输出结果-1">输出结果</h5>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre></td><td class="rouge-code"><pre><span class="n">fanout1</span><span class="o">--&gt;</span><span class="err">交换机</span><span class="o">:</span><span class="n">fanout</span><span class="o">-</span><span class="n">exchange</span>
+<span class="err">路由：</span>
+<span class="err">内容：</span><span class="nc">Hello</span><span class="o">,</span><span class="nc">Fanout</span> <span class="nc">Msg</span>
+<span class="n">fanout2</span><span class="o">--&gt;</span><span class="err">交换机</span><span class="o">:</span><span class="n">fanout</span><span class="o">-</span><span class="n">exchange</span>
+<span class="err">路由：</span>
+<span class="err">内容：</span><span class="nc">Hello</span><span class="o">,</span><span class="nc">Fanout</span> <span class="nc">Msg</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h4 id="topic-exchange">Topic Exchange</h4>
+<p>类似模糊匹配，<code class="highlighter-rouge">Exchange</code>将消息转发到所关注主题能<code class="highlighter-rouge">Route Key</code>模糊匹配的队列。</p>
+
+<h5 id="配置代码-2">配置代码</h5>
+<div class="language-properties highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class="rouge-code"><pre><span class="py">mq.key.topic-exchange</span><span class="p">=</span><span class="s">topic-exchange</span>
+<span class="py">mq.topic.route-key-1</span><span class="p">=</span><span class="s">topic.log.select</span>
+<span class="py">mq.topic.route-key-2</span><span class="p">=</span><span class="s">topic.log.select.new</span>
+<span class="py">mq.topic.route-key-3</span><span class="p">=</span><span class="s">topic.log</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+</pre></td><td class="rouge-code"><pre><span class="nd">@Configuration</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">RabbitConfig</span> <span class="o">{</span>
+
+    <span class="nd">@Autowired</span>
+    <span class="nc">Environment</span> <span class="n">env</span><span class="o">;</span>
+      <span class="cm">/***********Topic***********/</span>
+    <span class="nd">@Bean</span>
+    <span class="kd">public</span> <span class="nc">TopicExchange</span> <span class="nf">topicExchange</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">TopicExchange</span><span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">getProperty</span><span class="o">(</span><span class="s">"mq.key.topic-exchange"</span><span class="o">));</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Bean</span>
+    <span class="kd">public</span> <span class="nc">Binding</span> <span class="nf">bindExchangeTopic1Queue</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="nc">BindingBuilder</span><span class="o">.</span><span class="na">bind</span><span class="o">(</span><span class="n">topicQueue1</span><span class="o">()).</span><span class="na">to</span><span class="o">(</span><span class="n">topicExchange</span><span class="o">()).</span><span class="na">with</span><span class="o">(</span><span class="s">"topic.log.select"</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Bean</span>
+    <span class="kd">public</span> <span class="nc">Binding</span> <span class="nf">bindExchangeTopic2Queue</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="nc">BindingBuilder</span><span class="o">.</span><span class="na">bind</span><span class="o">(</span><span class="n">topicQueue2</span><span class="o">()).</span><span class="na">to</span><span class="o">(</span><span class="n">topicExchange</span><span class="o">()).</span><span class="na">with</span><span class="o">(</span><span class="s">"topic.log.select.#"</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Bean</span>
+    <span class="kd">public</span> <span class="nc">Binding</span> <span class="nf">bindExchangeTopic3Queue</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="nc">BindingBuilder</span><span class="o">.</span><span class="na">bind</span><span class="o">(</span><span class="n">topicQueue3</span><span class="o">()).</span><span class="na">to</span><span class="o">(</span><span class="n">topicExchange</span><span class="o">()).</span><span class="na">with</span><span class="o">(</span><span class="s">"topic.log.#"</span><span class="o">);</span>
+    <span class="o">}</span>
+
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h5 id="消费者代码-2">消费者代码</h5>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+</pre></td><td class="rouge-code"><pre><span class="nd">@Component</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">Topic1Consumer</span> <span class="o">{</span>
+    <span class="nd">@RabbitListener</span><span class="o">(</span><span class="n">queues</span> <span class="o">=</span> <span class="s">"${mq.topic.route-key-1}"</span><span class="o">)</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">directListener</span><span class="o">(</span><span class="nc">String</span> <span class="n">message</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"topic1--&gt;"</span> <span class="o">+</span> <span class="n">message</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+<span class="nd">@Component</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">Topic2Consumer</span> <span class="o">{</span>
+    <span class="nd">@RabbitListener</span><span class="o">(</span><span class="n">queues</span> <span class="o">=</span> <span class="s">"${mq.topic.route-key-2}"</span><span class="o">)</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">directListener</span><span class="o">(</span><span class="nc">String</span> <span class="n">message</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"topic2--&gt;"</span><span class="o">+</span><span class="n">message</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+<span class="nd">@Component</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">Topic3Consumer</span> <span class="o">{</span>
+    <span class="nd">@RabbitListener</span><span class="o">(</span><span class="n">queues</span> <span class="o">=</span> <span class="s">"${mq.topic.route-key-3}"</span><span class="o">)</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">directListener</span><span class="o">(</span><span class="nc">String</span> <span class="n">message</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"topic3--&gt;"</span> <span class="o">+</span> <span class="n">message</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<h5 id="测试代码-2">测试代码</h5>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+</pre></td><td class="rouge-code"><pre> <span class="nd">@Test</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">sendTopic1Msg</span><span class="o">()</span> <span class="o">{</span>
+        <span class="nc">String</span> <span class="n">context</span> <span class="o">=</span> <span class="s">"Hello,Topic Msg"</span><span class="o">;</span>
+        <span class="nc">String</span> <span class="n">routeKey1</span> <span class="o">=</span> <span class="s">"topic.log.select"</span><span class="o">;</span>
+        <span class="nc">String</span> <span class="n">exchangeName</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="na">getProperty</span><span class="o">(</span><span class="s">"mq.key.topic-exchange"</span><span class="o">);</span>
+        <span class="nc">String</span> <span class="n">msg</span> <span class="o">=</span> <span class="nc">String</span><span class="o">.</span><span class="na">format</span><span class="o">(</span><span class="n">context_temp</span><span class="o">,</span> <span class="n">exchangeName</span><span class="o">,</span> <span class="n">routeKey1</span><span class="o">,</span> <span class="n">context</span><span class="o">);</span>
+        <span class="n">amqpTemplate</span><span class="o">.</span><span class="na">convertAndSend</span><span class="o">(</span><span class="n">exchangeName</span><span class="o">,</span> <span class="n">routeKey1</span><span class="o">,</span> <span class="n">msg</span><span class="o">);</span>
+    <span class="o">}</span>
+    <span class="nd">@Test</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">sendTopic2Msg</span><span class="o">()</span> <span class="o">{</span>
+        <span class="nc">String</span> <span class="n">context</span> <span class="o">=</span> <span class="s">"Hello,Topic Msg"</span><span class="o">;</span>
+        <span class="nc">String</span> <span class="n">routeKey2</span> <span class="o">=</span> <span class="s">"topic.log.select.new"</span><span class="o">;</span>
+
+        <span class="nc">String</span> <span class="n">exchangeName</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="na">getProperty</span><span class="o">(</span><span class="s">"mq.key.topic-exchange"</span><span class="o">);</span>
+        <span class="nc">String</span> <span class="n">msg</span> <span class="o">=</span> <span class="nc">String</span><span class="o">.</span><span class="na">format</span><span class="o">(</span><span class="n">context_temp</span><span class="o">,</span> <span class="n">exchangeName</span><span class="o">,</span> <span class="n">routeKey2</span><span class="o">,</span> <span class="n">context</span><span class="o">);</span>
+        <span class="n">amqpTemplate</span><span class="o">.</span><span class="na">convertAndSend</span><span class="o">(</span><span class="n">exchangeName</span><span class="o">,</span> <span class="n">routeKey2</span><span class="o">,</span> <span class="n">msg</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Test</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">sendTopic3Msg</span><span class="o">()</span> <span class="o">{</span>
+        <span class="nc">String</span> <span class="n">context</span> <span class="o">=</span> <span class="s">"Hello,Topic Msg"</span><span class="o">;</span>
+        <span class="nc">String</span> <span class="n">routeKey3</span> <span class="o">=</span> <span class="s">"topic.log"</span><span class="o">;</span>
+
+        <span class="nc">String</span> <span class="n">exchangeName</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="na">getProperty</span><span class="o">(</span><span class="s">"mq.key.topic-exchange"</span><span class="o">);</span>
+        <span class="nc">String</span> <span class="n">msg</span> <span class="o">=</span> <span class="nc">String</span><span class="o">.</span><span class="na">format</span><span class="o">(</span><span class="n">context_temp</span><span class="o">,</span> <span class="n">exchangeName</span><span class="o">,</span> <span class="n">routeKey3</span><span class="o">,</span> <span class="n">context</span><span class="o">);</span>
+        <span class="n">amqpTemplate</span><span class="o">.</span><span class="na">convertAndSend</span><span class="o">(</span><span class="n">exchangeName</span><span class="o">,</span> <span class="n">routeKey3</span><span class="o">,</span> <span class="n">msg</span><span class="o">);</span>
+    <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<h5 id="输出结果-2">输出结果</h5>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+</pre></td><td class="rouge-code"><pre>
+<span class="c1">//1</span>
+<span class="n">topic3</span><span class="o">,</span><span class="nl">key:</span><span class="n">topic</span><span class="o">.</span><span class="na">log</span><span class="o">--&gt;</span><span class="err">交换机</span><span class="o">:</span><span class="n">topic</span><span class="o">-</span><span class="n">exchange</span>
+<span class="err">路由：</span><span class="n">topic</span><span class="o">.</span><span class="na">log</span><span class="o">.</span><span class="na">select</span>
+<span class="err">内容：</span><span class="nc">Hello</span><span class="o">,</span><span class="nc">Topic</span> <span class="nc">Msg</span>
+<span class="n">topic1</span><span class="o">,</span><span class="nl">key:</span><span class="n">topic</span><span class="o">.</span><span class="na">log</span><span class="o">.</span><span class="na">select</span><span class="o">--&gt;</span><span class="err">交换机</span><span class="o">:</span><span class="n">topic</span><span class="o">-</span><span class="n">exchange</span>
+<span class="err">路由：</span><span class="n">topic</span><span class="o">.</span><span class="na">log</span><span class="o">.</span><span class="na">select</span>
+<span class="err">内容：</span><span class="nc">Hello</span><span class="o">,</span><span class="nc">Topic</span> <span class="nc">Msg</span>
+<span class="n">topic2</span><span class="o">,</span><span class="nl">key:</span><span class="n">topic</span><span class="o">.</span><span class="na">log</span><span class="o">.</span><span class="na">select</span><span class="o">.</span><span class="na">new</span><span class="o">--&gt;</span><span class="err">交换机</span><span class="o">:</span><span class="n">topic</span><span class="o">-</span><span class="n">exchange</span>
+<span class="err">路由：</span><span class="n">topic</span><span class="o">.</span><span class="na">log</span><span class="o">.</span><span class="na">select</span>
+<span class="err">内容：</span><span class="nc">Hello</span><span class="o">,</span><span class="nc">Topic</span> <span class="nc">Msg</span>
+
+<span class="c1">//2</span>
+<span class="n">topic2</span><span class="o">,</span><span class="nl">key:</span><span class="n">topic</span><span class="o">.</span><span class="na">log</span><span class="o">.</span><span class="na">select</span><span class="o">.</span><span class="na">new</span><span class="o">--&gt;</span><span class="err">交换机</span><span class="o">:</span><span class="n">topic</span><span class="o">-</span><span class="n">exchange</span>
+<span class="err">路由：</span><span class="n">topic</span><span class="o">.</span><span class="na">log</span><span class="o">.</span><span class="na">select</span><span class="o">.</span><span class="na">new</span>
+<span class="err">内容：</span><span class="nc">Hello</span><span class="o">,</span><span class="nc">Topic</span> <span class="nc">Msg</span>
+<span class="n">topic3</span><span class="o">,</span><span class="nl">key:</span><span class="n">topic</span><span class="o">.</span><span class="na">log</span><span class="o">--&gt;</span><span class="err">交换机</span><span class="o">:</span><span class="n">topic</span><span class="o">-</span><span class="n">exchange</span>
+<span class="err">路由：</span><span class="n">topic</span><span class="o">.</span><span class="na">log</span><span class="o">.</span><span class="na">select</span><span class="o">.</span><span class="na">new</span>
+<span class="err">内容：</span><span class="nc">Hello</span><span class="o">,</span><span class="nc">Topic</span> <span class="nc">Msg</span>
+
+<span class="c1">//3</span>
+<span class="n">topic3</span><span class="o">,</span><span class="nl">key:</span><span class="n">topic</span><span class="o">.</span><span class="na">log</span><span class="o">--&gt;</span><span class="err">交换机</span><span class="o">:</span><span class="n">topic</span><span class="o">-</span><span class="n">exchange</span>
+<span class="err">路由：</span><span class="n">topic</span><span class="o">.</span><span class="na">log</span>
+<span class="err">内容：</span><span class="nc">Hello</span><span class="o">,</span><span class="nc">Topic</span> <span class="nc">Msg</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+:ET

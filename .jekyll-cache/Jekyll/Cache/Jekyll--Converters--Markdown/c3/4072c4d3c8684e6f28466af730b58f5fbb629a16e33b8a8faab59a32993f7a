@@ -1,0 +1,138 @@
+I"$<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+</pre></td><td class="rouge-code"><pre><span class="c1">//AbstractBootStrap.java</span>
+<span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">doBind0</span><span class="o">(</span>
+        <span class="kd">final</span> <span class="nc">ChannelFuture</span> <span class="n">regFuture</span><span class="o">,</span> <span class="kd">final</span> <span class="nc">Channel</span> <span class="n">channel</span><span class="o">,</span>
+        <span class="kd">final</span> <span class="nc">SocketAddress</span> <span class="n">localAddress</span><span class="o">,</span> <span class="kd">final</span> <span class="nc">ChannelPromise</span> <span class="n">promise</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">channel</span><span class="o">.</span><span class="na">eventLoop</span><span class="o">().</span><span class="na">execute</span><span class="o">(</span><span class="k">new</span> <span class="nc">Runnable</span><span class="o">()</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">regFuture</span><span class="o">.</span><span class="na">isSuccess</span><span class="o">())</span> <span class="o">{</span>
+          <span class="n">channel</span><span class="o">.</span><span class="na">bind</span><span class="o">(</span><span class="n">localAddress</span><span class="o">,</span> <span class="n">promise</span><span class="o">).</span><span class="na">addListener</span><span class="o">(</span><span class="nc">ChannelFutureListener</span><span class="o">.</span><span class="na">CLOSE_ON_FAILURE</span><span class="o">);</span>
+      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+          <span class="n">promise</span><span class="o">.</span><span class="na">setFailure</span><span class="o">(</span><span class="n">regFuture</span><span class="o">.</span><span class="na">cause</span><span class="o">());</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">});</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>把绑定的方法包装成一个任务，放到事件执行器 中执行。具体是在<code class="highlighter-rouge">SingleThreadEventExecutor#execute</code>中实现
+具体可以看<a href="http://jinlipool.com/2019/01/29/netty-2-1-3-server-socket-bind/">【2-1-3.Netty源码:端口绑定】</a>，已经介绍了bind()方法具体做的是什么。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+</pre></td><td class="rouge-code"><pre> <span class="nd">@Override</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">execute</span><span class="o">(</span><span class="nc">Runnable</span> <span class="n">task</span><span class="o">)</span> <span class="o">{</span>
+    <span class="o">...</span>
+    <span class="kt">boolean</span> <span class="n">inEventLoop</span> <span class="o">=</span> <span class="n">inEventLoop</span><span class="o">();</span>
+    <span class="n">addTask</span><span class="o">(</span><span class="n">task</span><span class="o">);</span>
+    <span class="k">if</span> <span class="o">(!</span><span class="n">inEventLoop</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">startThread</span><span class="o">();</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">isShutdown</span><span class="o">()</span> <span class="o">&amp;&amp;</span> <span class="n">removeTask</span><span class="o">(</span><span class="n">task</span><span class="o">))</span> <span class="o">{</span>
+          <span class="n">reject</span><span class="o">();</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="k">if</span> <span class="o">(!</span><span class="n">addTaskWakesUp</span> <span class="o">&amp;&amp;</span> <span class="n">wakesUpForTask</span><span class="o">(</span><span class="n">task</span><span class="o">))</span> <span class="o">{</span>
+        <span class="n">wakeup</span><span class="o">(</span><span class="n">inEventLoop</span><span class="o">);</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<ul>
+  <li>【4】判断当前线程是否是eventLoop线程，</li>
+  <li>【5】将任务放到任务队列，具体是<code class="highlighter-rouge">taskQueue.offer(task)</code>，详细可见<a href="http://jinlipool.com/2019/01/30/netty-3-4-task.md/">【3-4.Netty源码:任务和定时任务队列】</a></li>
+  <li>
+    <p>【7】开启线程</p>
+
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="rouge-code"><pre><span class="kd">private</span> <span class="kt">void</span> <span class="nf">startThread</span><span class="o">()</span> <span class="o">{</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">state</span> <span class="o">==</span> <span class="no">ST_NOT_STARTED</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="no">STATE_UPDATER</span><span class="o">.</span><span class="na">compareAndSet</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="no">ST_NOT_STARTED</span><span class="o">,</span> <span class="no">ST_STARTED</span><span class="o">))</span> <span class="o">{</span>
+      <span class="k">try</span> <span class="o">{</span>
+          <span class="n">doStartThread</span><span class="o">();</span>
+      <span class="o">}</span> 
+          <span class="o">...</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+</pre></td><td class="rouge-code"><pre><span class="kd">private</span> <span class="kt">void</span> <span class="nf">doStartThread</span><span class="o">()</span> <span class="o">{</span>
+  <span class="k">assert</span> <span class="n">thread</span> <span class="o">==</span> <span class="kc">null</span><span class="o">;</span>
+  <span class="n">executor</span><span class="o">.</span><span class="na">execute</span><span class="o">(</span><span class="k">new</span> <span class="nc">Runnable</span><span class="o">()</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+      <span class="o">...</span>
+      <span class="kt">boolean</span> <span class="n">success</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+      <span class="o">...</span>
+      <span class="k">try</span> <span class="o">{</span>
+          <span class="nc">SingleThreadEventExecutor</span><span class="o">.</span><span class="na">this</span><span class="o">.</span><span class="na">run</span><span class="o">();</span>
+          <span class="n">success</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+      <span class="o">}</span> 
+       <span class="o">...</span>
+    <span class="o">}</span>
+  <span class="o">});</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+    <ul>
+      <li>【2】有个断言。线程不能为空</li>
+      <li>【3】是调用<code class="highlighter-rouge">DefaultThreadFactory#execute(Runnable</code>方法新开启一个线程并且启动，netty将Runnable封装成<code class="highlighter-rouge">FastThreadLocalRunnable</code>，并且将这个线程封装<code class="highlighter-rouge">FastThreadLocalThread</code>后启动</li>
+      <li>【10】线程执行。具体实现NioEventLoop#run，具体实现方法见下一篇文章。</li>
+    </ul>
+  </li>
+</ul>
+
+<p>主线程会调用bind方法 bind方法会作为一个task被放到任务队列里，然后调用服务端execute的方法，nett有会判断调用的方法不是在NioEventLoop线程中，然后调用<code class="highlighter-rouge">doStartThread</code>方法创建一个线程，并保存下来 最后调用<code class="highlighter-rouge">  SingleThreadEventExecutor.this.run();</code>进行启动</p>
+:ET

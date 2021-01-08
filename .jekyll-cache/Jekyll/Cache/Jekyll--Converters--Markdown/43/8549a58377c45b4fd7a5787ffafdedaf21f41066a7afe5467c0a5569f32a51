@@ -1,0 +1,82 @@
+I"<h1 id="4拥塞控制">4.拥塞控制</h1>
+<h3 id="什么是拥塞">什么是拥塞</h3>
+<p>当网络变得拥塞时，路由器因无法处理高速率到达的流量而被迫丢弃数据信息的现象称为拥塞</p>
+
+<h3 id="与流量控制的区别">与流量控制的区别</h3>
+<p>理论原理相似，都是通过窗口管理进行控制，流量控制主要是依赖于连接的发送端和接收端 (4层以上)，拥塞控制主要基于路由器(4层以下)</p>
+
+<h3 id="拥塞控制的主要方法">拥塞控制的主要方法</h3>
+<p>慢启动、拥塞避免、快速恢复
+<img src="/img/tcp/congestion_controller/1.png" alt="1" />
+				《计算机网络 自顶向下方法(第七版)》</p>
+
+<h3 id="慢启动">慢启动</h3>
+<p>一条TCP连接开始，通常不会立刻处于最高速率，是根据相关算法一点点将速率提升上去的。</p>
+
+<h4 id="慢启动算法">慢启动算法</h4>
+<p>慢启动算法如下:
+cwnd = MSS
+收到一个ACK 线性增长 cwnd++;
+RTT阶段指数增长 cwnd * 2</p>
+
+<h3 id="拥塞避免">拥塞避免</h3>
+
+<h4 id="拥塞避免算法">拥塞避免算法</h4>
+<p>拥塞避免算法如下：
+每个RTT中 只累计增加1个MSS。
+一共N个包，收到一个ACK，cwnd = cwnd + 1 / ( N * MSS )<br />
+每当过一个RTT，cwnd = cwnd+1</p>
+
+<p>TCP中是使用慢启动还是拥塞避免算法完全是取决于cwnd和ssthresh这两个值。从上面的图也能看出来。当cwnd &lt; ssthresh 是使用慢启动  ，否则就是使用拥塞避免。</p>
+
+<p>如果在<code class="highlighter-rouge">慢启动</code>和<code class="highlighter-rouge">拥塞避免</code>中出现RTO情况下:</p>
+<ul>
+  <li>sshthresh = cwnd / 2 .</li>
+  <li>cwnd = MMS</li>
+  <li>进入/重新进入<code class="highlighter-rouge">慢启动过程</code></li>
+</ul>
+
+<blockquote>
+  <p>至此慢启动和拥塞避免算法组成了TCP拥塞控制算法的第一部分。</p>
+</blockquote>
+
+<h3 id="tahoereno快速恢复算法">Tahoe，Reno，快速恢复算法</h3>
+<p>早期的Tahoe TCP版本比较粗糙，在连接之初就是出于慢启动阶段，一旦检测到丢包无论是RTO还是快速重传，都会按照上面的<code class="highlighter-rouge">RTO情况</code>进行处理。</p>
+
+<p>由于Tahoe 会带来带宽利用率低下，从而进一步进行版本优化。出现了Reno TCP。针对不同类型的丢包使用不同的处理方式。
+RTO引发的丢包处理方式不变。
+三个冗余ACK的丢包情况下：</p>
+<ul>
+  <li>cwnd = cwnd  / 2</li>
+  <li>ssthresh = cwnd</li>
+  <li>进入<code class="highlighter-rouge">快速恢复算法</code></li>
+</ul>
+
+<h3 id="快速恢复">快速恢复</h3>
+
+<h4 id="快速恢复算法">快速恢复算法</h4>
+<ul>
+  <li>启动款速重传，cwnd的值都增加一个MSS，cwnd = cwnd + 3 * MSS</li>
+  <li>再收到 重复ACK ，cwnd = cwnd +MSS</li>
+  <li>如果收到新的ACK  cwnd = ssthresh 并且进入<code class="highlighter-rouge">拥塞模式</code></li>
+</ul>
+
+<blockquote>
+  <p>TCP Reno  算法得到了广泛的应用，并且称为”标准TCP“的基础，后面基于它又有更多跟新优化。</p>
+</blockquote>
+
+<h3 id="newreno算法">NewReno算法</h3>
+
+<h4 id="解决了什么问题">解决了什么问题</h4>
+<p>NewReno主要针对快速恢复算法进行优化，Reno算法中依赖三次返回的重复ACK。这导致有个问题存在，可能有多个包丢失，但是返回的ACKS并不能代表所有的数据包。Reno只重传一个，剩下的包只能等RTO，这就会出现多个超时会使当前TCP传输速度急速下降。</p>
+
+<h4 id="newreno算法-1">NewReno算法</h4>
+<p>NewReno 算法(1995年)是在没有SACK(1996年)支持下改进快速恢复算法。</p>
+
+<p>在接受到三个重复ACKS进入快速恢复模式，同时会近路上个传输数据窗口的最高序列号，只有当收到的序列号不小于恢复点的ACK，才会停止快速恢复阶段。
+当成功接受一个ACK后可能继续发送一个新的数据段，这样做也是为了减少重传超时，</p>
+
+<h3 id="fack算法">FACK算法</h3>
+
+<p>#《TCP_IP协议：卷1》</p>
+:ET

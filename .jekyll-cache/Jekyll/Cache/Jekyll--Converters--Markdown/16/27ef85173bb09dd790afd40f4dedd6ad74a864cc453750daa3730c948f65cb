@@ -1,0 +1,94 @@
+I"Q<h4 id="一介绍">一.介绍</h4>
+<p>首先来一段keepalived介绍</p>
+<blockquote>
+  <p>Keepalived的作用是检测服务器的状态，如果有一台web服务器宕机，或工作出现故障，Keepalived将检测到，并将有故障的服务器从系统中剔除，同时使用其他服务器代替该服务器的工作，当服务器工作正常后Keepalived自动将服务器加入到服务器群中，这些工作全部自动完成，不需要人工干涉，需要人工做的只是修复故障的服务器。</p>
+</blockquote>
+
+<h4 id="二环境">二.环境</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>名称</th>
+      <th>版本号</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>CentOS</td>
+      <td>7.x</td>
+    </tr>
+    <tr>
+      <td>keepalived</td>
+      <td>2.0.2</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="三keepalived安装">三.keepalived安装</h4>
+
+<ol>
+  <li>安装相关依赖
+    <blockquote>
+      <p>yum -y install libnl libnl-devel 相关依赖</p>
+    </blockquote>
+  </li>
+  <li>先将本地的keepalived传入到虚拟服务器中并且解压
+    <blockquote>
+      <p>tar -zvxf keepalived-2.0.20.tar.gz</p>
+    </blockquote>
+  </li>
+  <li>进入解压后的文件夹，先进行配置
+    <blockquote>
+      <p>./configure –prefix=/usr/local/keepalived –sysconf=/etc
+ <code class="highlighter-rouge">sysconf 是keepalived的核心配置文件所在位置，这个位置是固定在etc下</code></p>
+    </blockquote>
+  </li>
+  <li>编译和安装
+    <blockquote>
+      <p>make &amp; make install</p>
+    </blockquote>
+  </li>
+  <li>keepalived的启动文件和配置文件是在两个地方
+    <blockquote>
+      <p>核心配置文件 /etc/keepalived/keepalived.conf <br />
+启动文件 /usr/local/keepalived/sbin/keepalived</p>
+    </blockquote>
+  </li>
+</ol>
+
+<p>一般来说安装Keepalived伴随这集群来的，具体根据当前是什么架构再进行配置,例如：</p>
+
+<p><strong>1. <a href="!http://jinlipool.com/2020/02/18/keepalived_nginx">Nginx+Keepalived 双机主备，双机热备</a></strong></p>
+
+<p><strong>2. <a href="!http://jinlipool.com/2020/02/18/lvs_keepalived_nginx">LVS(DR模式)+Keepalived(主备)+Nginx</a></strong></p>
+
+<h4 id="四-将keepalived作为系统服务启动">四. 将Keepalived作为系统服务启动</h4>
+<ol>
+  <li>先回到解压后<code class="highlighter-rouge">keepalived-2.0.20</code>文件夹中。在进入里面的<code class="highlighter-rouge">keepalived</code>文件夹
+    <blockquote>
+      <p>cp ./etc/init.d/keepalived /etc/init.d/ <br />
+cp ./etc/sysconfig/keepalived /etc/sysconfig/ <br />
+如果有提示是否覆盖，直接覆盖就可以了 \</p>
+    </blockquote>
+  </li>
+  <li>刷新，使新放入系统的命令生效
+    <blockquote>
+      <p>systemctl daemon-reload</p>
+    </blockquote>
+  </li>
+  <li>keepalived相关操作
+    <blockquote>
+      <p>systemctl start keepalived.service <br />
+systemctl stop keepalived.service <br />
+systemctl restart keepalived.service</p>
+    </blockquote>
+  </li>
+  <li>最后查看是否启动成功
+    <blockquote>
+      <p>ps -ef | grep keepalived</p>
+    </blockquote>
+  </li>
+</ol>
+
+:ET

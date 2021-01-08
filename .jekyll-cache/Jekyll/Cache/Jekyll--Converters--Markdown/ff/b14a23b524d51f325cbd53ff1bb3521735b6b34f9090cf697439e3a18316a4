@@ -1,0 +1,2 @@
+I"<p>Netty中任务分普通任务<code class="highlighter-rouge">Runable</code>和定时任务<code class="highlighter-rouge">ScheduledFutureTask</code>。分别对应两种队列<code class="highlighter-rouge">Queue</code>和<code class="highlighter-rouge">PriorityQueue</code></p>
+:ET

@@ -1,0 +1,74 @@
+I"�	<h4 id="一环境">一.环境</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>名称</th>
+      <th>版本号</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>CentOS</td>
+      <td>7.x</td>
+    </tr>
+    <tr>
+      <td>Nginx</td>
+      <td>1.16.0</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="二安装配置">二.安装&amp;配置</h4>
+
+<ol>
+  <li>首先在虚拟机中需要关闭防火墙，否则访问不了
+    <blockquote>
+      <p>开机不自动启动防火墙
+sudo systemctl disable firewalld.service
+关闭防火墙
+sudo systemctl stop firewalld.service</p>
+    </blockquote>
+  </li>
+  <li>由于是新的环境，需要预先安装一些依赖
+    <blockquote>
+      <p>yum install gcc-c++ <br />
+yum install -y pcre pcre-devel #pcre库 用于解析正则 <br />
+yum install -y zlib zlib-devel #zlib压缩解压 <br />
+yum install -y openssl openssl-devel #https相关</p>
+    </blockquote>
+  </li>
+  <li>先将本地的nginx传入到虚拟服务器中并且解压
+    <blockquote>
+      <p>tar -zvxf nginx-1.16.0.tar.gz</p>
+    </blockquote>
+  </li>
+  <li>创建nginx临时目录，如果不创建，再启动nginx时候会报错
+    <blockquote>
+      <p>mkdir /var/temp/nginx -p</p>
+    </blockquote>
+  </li>
+  <li>进入解压后的nginx文件夹，先进行配置
+    <blockquote>
+      <p>./configure –with-http_auth_request_module –with-http_realip_module –with-http_v2_module –with-debug –add-module=/home/web/nginx-http-concat/ –with-http_random_index_module –with-http_sub_module –with-http_addition_module –with-http_secure_link_module –with-http_geoip_module –with-http_ssl_module –with-stream_ssl_module –with-stream_realip_module –with-stream_ssl_preread_module –with-stream –add-module=/home/web/ngx_cache_purge/ –with-http_slice_module –with-google_perftools_module –with-threads –with-ld-opt=-ltcmalloc –with-http_gzip_static_module –with-http_gunzip_module –with-http_stub_status_module</p>
+    </blockquote>
+  </li>
+  <li>编译和安装
+    <blockquote>
+      <p>make &amp; make install</p>
+    </blockquote>
+  </li>
+  <li>等编译安装完毕后，就可以去<code class="highlighter-rouge">/usr/local/nginx/sbin/</code>文件夹下启动了
+    <blockquote>
+      <p>./nginx #启动
+./nginx -s stop #停止
+./nginx -s reload #重新加载</p>
+    </blockquote>
+  </li>
+  <li>最后查看是否启动成功
+    <blockquote>
+      <p>ps -ef | grep nginx</p>
+    </blockquote>
+  </li>
+</ol>
+:ET

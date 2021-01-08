@@ -1,0 +1,299 @@
+I"�T<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+</pre></td><td class="rouge-code"><pre> <span class="c1">//NioEventLoop.java</span>
+<span class="c1">//重新构造个selector</span>
+<span class="kd">private</span> <span class="kt">void</span> <span class="nf">rebuildSelector0</span><span class="o">()</span> <span class="o">{</span>
+  <span class="kd">final</span> <span class="nc">Selector</span> <span class="n">oldSelector</span> <span class="o">=</span> <span class="n">selector</span><span class="o">;</span>
+  <span class="kd">final</span> <span class="nc">SelectorTuple</span> <span class="n">newSelectorTuple</span><span class="o">;</span>
+  <span class="o">...</span>
+  <span class="k">try</span> <span class="o">{</span>
+    <span class="n">newSelectorTuple</span> <span class="o">=</span> <span class="n">openSelector</span><span class="o">();</span>
+  <span class="o">}</span>
+  <span class="o">...</span>
+  
+  <span class="c1">//获取这个selector上所有注册的channelkey</span>
+  <span class="k">for</span> <span class="o">(</span><span class="nc">SelectionKey</span> <span class="n">key</span> <span class="o">:</span> <span class="n">oldSelector</span><span class="o">.</span><span class="na">keys</span><span class="o">())</span> <span class="o">{</span>
+    <span class="nc">Object</span> <span class="n">a</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="na">attachment</span><span class="o">();</span>
+    <span class="k">try</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(!</span><span class="n">key</span><span class="o">.</span><span class="na">isValid</span><span class="o">()</span> <span class="o">||</span> <span class="n">key</span><span class="o">.</span><span class="na">channel</span><span class="o">().</span><span class="na">keyFor</span><span class="o">(</span><span class="n">newSelectorTuple</span><span class="o">.</span><span class="na">unwrappedSelector</span><span class="o">)</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">continue</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="c1">//这个select上所有感兴趣事件</span>
+        <span class="kt">int</span> <span class="n">interestOps</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="na">interestOps</span><span class="o">();</span>
+        <span class="n">key</span><span class="o">.</span><span class="na">cancel</span><span class="o">();</span>
+        
+        <span class="nc">SelectionKey</span> <span class="n">newKey</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="na">channel</span><span class="o">().</span><span class="na">register</span><span class="o">(</span><span class="n">newSelectorTuple</span><span class="o">.</span><span class="na">unwrappedSelector</span><span class="o">,</span> <span class="n">interestOps</span><span class="o">,</span> <span class="n">a</span><span class="o">);</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">a</span> <span class="k">instanceof</span> <span class="nc">AbstractNioChannel</span><span class="o">)</span> <span class="o">{</span>
+            <span class="o">((</span><span class="nc">AbstractNioChannel</span><span class="o">)</span> <span class="n">a</span><span class="o">).</span><span class="na">selectionKey</span> <span class="o">=</span> <span class="n">newKey</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="n">nChannels</span><span class="o">++;</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+        <span class="o">...</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+
+  <span class="n">selector</span> <span class="o">=</span> <span class="n">newSelectorTuple</span><span class="o">.</span><span class="na">selector</span><span class="o">;</span>
+  <span class="n">unwrappedSelector</span> <span class="o">=</span> <span class="n">newSelectorTuple</span><span class="o">.</span><span class="na">unwrappedSelector</span><span class="o">;</span>
+
+  <span class="k">try</span> <span class="o">{</span>
+      <span class="c1">// time to close the old selector as everything else is registered to the new one</span>
+      <span class="n">oldSelector</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+  <span class="o">}</span> 
+  <span class="o">...</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<ul>
+  <li>【7】创建 Selector 对象,netty优化了selector创建(解释过长，移步到下面的openSelector()方法说明）</li>
+  <li>【12-30】 获取产生空轮循selecor上的所有的channel，注册到新创建的selector上。
+    <ul>
+      <li>【13】获取每个注册selecor上的SelectoionKey，并且获取这些key的<code class="highlighter-rouge">attachment</code></li>
+      <li>【15-17】判断这些key是否可用。</li>
+      <li>【20】 将老的channel以及它的参数和感兴趣事件注册到新的selector上</li>
+    </ul>
+  </li>
+  <li>【32-33】将<code class="highlighter-rouge">selector</code>和<code class="highlighter-rouge">unwrappedSelector</code>指向新的 Selector 对象。</li>
+  <li>【37】关闭旧的selector</li>
+</ul>
+
+<hr />
+<h4 id="openselector方法说明">openSelector()方法说明</h4>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+</pre></td><td class="rouge-code"><pre> <span class="c1">//NioEventLoop.java</span>
+ <span class="kd">private</span> <span class="nc">SelectorTuple</span> <span class="nf">openSelector</span><span class="o">()</span> <span class="o">{</span>
+    <span class="kd">final</span> <span class="nc">Selector</span> <span class="n">unwrappedSelector</span><span class="o">;</span>
+    
+    <span class="k">try</span> <span class="o">{</span>
+        <span class="n">unwrappedSelector</span> <span class="o">=</span> <span class="n">provider</span><span class="o">.</span><span class="na">openSelector</span><span class="o">();</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="nf">ChannelException</span><span class="o">(</span><span class="s">"failed to open a new selector"</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
+    <span class="o">}</span>
+    <span class="k">if</span> <span class="o">(</span><span class="no">DISABLE_KEYSET_OPTIMIZATION</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">SelectorTuple</span><span class="o">(</span><span class="n">unwrappedSelector</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="nc">Object</span> <span class="n">maybeSelectorImplClass</span> <span class="o">=</span> <span class="nc">AccessController</span><span class="o">.</span><span class="na">doPrivileged</span><span class="o">(</span><span class="k">new</span> <span class="nc">PrivilegedAction</span><span class="o">&lt;</span><span class="nc">Object</span><span class="o">&gt;()</span> <span class="o">{</span>
+        <span class="nd">@Override</span>
+        <span class="kd">public</span> <span class="nc">Object</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+            <span class="k">try</span> <span class="o">{</span>
+                <span class="k">return</span> <span class="nc">Class</span><span class="o">.</span><span class="na">forName</span><span class="o">(</span>
+                        <span class="s">"sun.nio.ch.SelectorImpl"</span><span class="o">,</span>
+                        <span class="kc">false</span><span class="o">,</span>
+                        <span class="nc">PlatformDependent</span><span class="o">.</span><span class="na">getSystemClassLoader</span><span class="o">());</span>
+            <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Throwable</span> <span class="n">cause</span><span class="o">)</span> <span class="o">{</span>
+                <span class="k">return</span> <span class="n">cause</span><span class="o">;</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+    <span class="o">});</span>
+
+    <span class="k">if</span> <span class="o">(!(</span><span class="n">maybeSelectorImplClass</span> <span class="k">instanceof</span> <span class="nc">Class</span><span class="o">)</span> <span class="o">||</span>
+            <span class="o">!((</span><span class="nc">Class</span><span class="o">&lt;?&gt;)</span> <span class="n">maybeSelectorImplClass</span><span class="o">).</span><span class="na">isAssignableFrom</span><span class="o">(</span><span class="n">unwrappedSelector</span><span class="o">.</span><span class="na">getClass</span><span class="o">()))</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">maybeSelectorImplClass</span> <span class="k">instanceof</span> <span class="nc">Throwable</span><span class="o">)</span> <span class="o">{</span>
+            <span class="nc">Throwable</span> <span class="n">t</span> <span class="o">=</span> <span class="o">(</span><span class="nc">Throwable</span><span class="o">)</span> <span class="n">maybeSelectorImplClass</span><span class="o">;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="na">trace</span><span class="o">(</span><span class="s">"failed to instrument a special java.util.Set into: {}"</span><span class="o">,</span> <span class="n">unwrappedSelector</span><span class="o">,</span> <span class="n">t</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">SelectorTuple</span><span class="o">(</span><span class="n">unwrappedSelector</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kd">final</span> <span class="nc">Class</span><span class="o">&lt;?&gt;</span> <span class="n">selectorImplClass</span> <span class="o">=</span> <span class="o">(</span><span class="nc">Class</span><span class="o">&lt;?&gt;)</span> <span class="n">maybeSelectorImplClass</span><span class="o">;</span>
+
+    <span class="kd">final</span> <span class="nc">SelectedSelectionKeySet</span> <span class="n">selectedKeySet</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">SelectedSelectionKeySet</span><span class="o">();</span>
+
+    <span class="nc">Object</span> <span class="n">maybeException</span> <span class="o">=</span> <span class="nc">AccessController</span><span class="o">.</span><span class="na">doPrivileged</span><span class="o">(</span><span class="k">new</span> <span class="nc">PrivilegedAction</span><span class="o">&lt;</span><span class="nc">Object</span><span class="o">&gt;()</span> <span class="o">{</span>
+        <span class="nd">@Override</span>
+        <span class="kd">public</span> <span class="nc">Object</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+            <span class="k">try</span> <span class="o">{</span>
+                
+                <span class="nc">Field</span> <span class="n">selectedKeysField</span> <span class="o">=</span> <span class="n">selectorImplClass</span><span class="o">.</span><span class="na">getDeclaredField</span><span class="o">(</span><span class="s">"selectedKeys"</span><span class="o">);</span>
+                <span class="nc">Field</span> <span class="n">publicSelectedKeysField</span> <span class="o">=</span> <span class="n">selectorImplClass</span><span class="o">.</span><span class="na">getDeclaredField</span><span class="o">(</span><span class="s">"publicSelectedKeys"</span><span class="o">);</span>
+
+                <span class="k">if</span> <span class="o">(</span><span class="nc">PlatformDependent</span><span class="o">.</span><span class="na">javaVersion</span><span class="o">()</span> <span class="o">&gt;=</span> <span class="mi">9</span> <span class="o">&amp;&amp;</span> <span class="nc">PlatformDependent</span><span class="o">.</span><span class="na">hasUnsafe</span><span class="o">())</span> <span class="o">{</span>
+                    <span class="kt">long</span> <span class="n">selectedKeysFieldOffset</span> <span class="o">=</span> <span class="nc">PlatformDependent</span><span class="o">.</span><span class="na">objectFieldOffset</span><span class="o">(</span><span class="n">selectedKeysField</span><span class="o">);</span>
+                    <span class="kt">long</span> <span class="n">publicSelectedKeysFieldOffset</span> <span class="o">=</span> <span class="nc">PlatformDependent</span><span class="o">.</span><span class="na">objectFieldOffset</span><span class="o">(</span><span class="n">publicSelectedKeysField</span><span class="o">);</span>
+
+                    <span class="k">if</span> <span class="o">(</span><span class="n">selectedKeysFieldOffset</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="n">publicSelectedKeysFieldOffset</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="o">)</span> <span class="o">{</span>
+                        <span class="nc">PlatformDependent</span><span class="o">.</span><span class="na">putObject</span><span class="o">(</span>
+                                <span class="n">unwrappedSelector</span><span class="o">,</span> <span class="n">selectedKeysFieldOffset</span><span class="o">,</span> <span class="n">selectedKeySet</span><span class="o">);</span>
+                        <span class="nc">PlatformDependent</span><span class="o">.</span><span class="na">putObject</span><span class="o">(</span>
+                                <span class="n">unwrappedSelector</span><span class="o">,</span> <span class="n">publicSelectedKeysFieldOffset</span><span class="o">,</span> <span class="n">selectedKeySet</span><span class="o">);</span>
+                        <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+                    <span class="o">}</span>
+                <span class="o">}</span>
+                
+                <span class="nc">Throwable</span> <span class="n">cause</span> <span class="o">=</span> <span class="nc">ReflectionUtil</span><span class="o">.</span><span class="na">trySetAccessible</span><span class="o">(</span><span class="n">selectedKeysField</span><span class="o">,</span> <span class="kc">true</span><span class="o">);</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">cause</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="k">return</span> <span class="n">cause</span><span class="o">;</span>
+                <span class="o">}</span>
+                <span class="n">cause</span> <span class="o">=</span> <span class="nc">ReflectionUtil</span><span class="o">.</span><span class="na">trySetAccessible</span><span class="o">(</span><span class="n">publicSelectedKeysField</span><span class="o">,</span> <span class="kc">true</span><span class="o">);</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">cause</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="k">return</span> <span class="n">cause</span><span class="o">;</span>
+                <span class="o">}</span>
+                
+                <span class="n">selectedKeysField</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="n">unwrappedSelector</span><span class="o">,</span> <span class="n">selectedKeySet</span><span class="o">);</span>
+                <span class="n">publicSelectedKeysField</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="n">unwrappedSelector</span><span class="o">,</span> <span class="n">selectedKeySet</span><span class="o">);</span>
+                <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+            <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">NoSuchFieldException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+                <span class="k">return</span> <span class="n">e</span><span class="o">;</span>
+            <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">IllegalAccessException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+                <span class="k">return</span> <span class="n">e</span><span class="o">;</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+    <span class="o">});</span>
+
+    <span class="k">if</span> <span class="o">(</span><span class="n">maybeException</span> <span class="k">instanceof</span> <span class="nc">Exception</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">selectedKeys</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+        <span class="nc">Exception</span> <span class="n">e</span> <span class="o">=</span> <span class="o">(</span><span class="nc">Exception</span><span class="o">)</span> <span class="n">maybeException</span><span class="o">;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="na">trace</span><span class="o">(</span><span class="s">"failed to instrument a special java.util.Set into: {}"</span><span class="o">,</span> <span class="n">unwrappedSelector</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">SelectorTuple</span><span class="o">(</span><span class="n">unwrappedSelector</span><span class="o">);</span>
+    <span class="o">}</span>
+    <span class="n">selectedKeys</span> <span class="o">=</span> <span class="n">selectedKeySet</span><span class="o">;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="na">trace</span><span class="o">(</span><span class="s">"instrumented a special java.util.Set into: {}"</span><span class="o">,</span> <span class="n">unwrappedSelector</span><span class="o">);</span>
+    <span class="k">return</span> <span class="k">new</span> <span class="nf">SelectorTuple</span><span class="o">(</span><span class="n">unwrappedSelector</span><span class="o">,</span>
+            <span class="k">new</span> <span class="nf">SelectedSelectionKeySetSelector</span><span class="o">(</span><span class="n">unwrappedSelector</span><span class="o">,</span> <span class="n">selectedKeySet</span><span class="o">));</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<ul>
+  <li>【4-8】使用原生的方法创建 Selector 对象。</li>
+  <li>【9-12】默认使用selector优化。</li>
+  <li>【13-25反射的方法构建sun.nio.ch.SelectorImpl的类</li>
+  <li>【27-34】获得 SelectorImpl 类失败，则返回<code class="highlighter-rouge">SelectorTuple</code>对象。</li>
+  <li>【38】创建<code class="highlighter-rouge">SelectedSelectionKeySet</code>对象 ,是对<code class="highlighter-rouge">Selector</code> 中的<code class="highlighter-rouge">selectionKeys</code>重写.用预定义1024大小的列表替换原来HashSet。数组的add方法复杂度比HashSet的add方法复杂度要低.</li>
+  <li>【40-79】将创建好的<code class="highlighter-rouge">SelectedSelectionKeySet</code>对象利用反射重新设置到 unwrappedSelector 中的<code class="highlighter-rouge">selectedKeys</code>和 <code class="highlighter-rouge">publicSelectedKeys</code>。
+    <ul>
+      <li>【45-46】获得<code class="highlighter-rouge">selectorImplClass</code>中的 “selectedKeys” 和”publicSelectedKeys” 的 Field。</li>
+      <li>【61-68】设置两个Field的访问权限。</li>
+      <li>【70-71】设置<code class="highlighter-rouge">SelectedSelectionKeySet</code>对象到 unwrappedSelector中的 Field 中。</li>
+    </ul>
+  </li>
+  <li>【81-90】如果设置失败，返回 SelectorTuple 对象，如果成功设置个<code class="highlighter-rouge">selectedKeys</code>成员变量，并且返回新创建的<code class="highlighter-rouge">SelectorTuple</code>对象</li>
+</ul>
+:ET

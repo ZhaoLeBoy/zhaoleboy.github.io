@@ -1,0 +1,152 @@
+I"�&<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+</pre></td><td class="rouge-code"><pre><span class="c1">//NioEventLoop</span>
+<span class="nd">@Override</span>
+<span class="kd">protected</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+  <span class="k">for</span> <span class="o">(;</span> <span class="o">;</span> <span class="o">)</span> <span class="o">{</span>
+    <span class="k">try</span> <span class="o">{</span>
+      <span class="o">...</span><span class="na">select</span><span class="err">部分</span><span class="o">...</span> 
+        <span class="kd">final</span> <span class="kt">int</span> <span class="n">ioRatio</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">ioRatio</span><span class="o">;</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">ioRatio</span> <span class="o">==</span> <span class="mi">100</span><span class="o">)</span> <span class="o">{</span>
+          <span class="k">try</span> <span class="o">{</span>
+              <span class="n">processSelectedKeys</span><span class="o">();</span><span class="c1">//处理io相关逻辑</span>
+          <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+              <span class="c1">// Ensure we always run tasks.</span>
+              <span class="n">runAllTasks</span><span class="o">();</span><span class="c1">//处理外部线程进入队列的任务</span>
+          <span class="o">}</span>
+      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+          <span class="kd">final</span> <span class="kt">long</span> <span class="n">ioStartTime</span> <span class="o">=</span> <span class="nc">System</span><span class="o">.</span><span class="na">nanoTime</span><span class="o">();</span>
+          <span class="k">try</span> <span class="o">{</span>
+              <span class="n">processSelectedKeys</span><span class="o">();</span>
+          <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+              <span class="c1">// Ensure we always run tasks.</span>
+              <span class="kd">final</span> <span class="kt">long</span> <span class="n">ioTime</span> <span class="o">=</span> <span class="nc">System</span><span class="o">.</span><span class="na">nanoTime</span><span class="o">()</span> <span class="o">-</span> <span class="n">ioStartTime</span><span class="o">;</span>
+              <span class="n">runAllTasks</span><span class="o">(</span><span class="n">ioTime</span> <span class="o">*</span> <span class="o">(</span><span class="mi">100</span> <span class="o">-</span> <span class="n">ioRatio</span><span class="o">)</span> <span class="o">/</span> <span class="n">ioRatio</span><span class="o">);</span>
+          <span class="o">}</span>
+      <span class="o">}</span> 
+    <span class="o">}</span> 
+   <span class="o">...</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<ul>
+  <li>【8】见<a href="http://jinlipool.com/2019/01/30/netty-3-2-evetloop-event-detection/">【3-2.Netty源码:NioEventLoop循环检测事件】</a></li>
+  <li>
+    <p>【9】 processSelectedKeys此处是处理相关io连接问题</p>
+
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+</pre></td><td class="rouge-code"><pre>  <span class="c1">//NioEventLoop</span>
+  <span class="kd">private</span> <span class="kt">void</span> <span class="nf">processSelectedKeysOptimized</span><span class="o">()</span> <span class="o">{</span>
+    <span class="c1">//获取key</span>
+    <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">selectedKeys</span><span class="o">.</span><span class="na">size</span><span class="o">;</span> <span class="o">++</span><span class="n">i</span><span class="o">)</span> <span class="o">{</span>
+      <span class="kd">final</span> <span class="nc">SelectionKey</span> <span class="n">k</span> <span class="o">=</span> <span class="n">selectedKeys</span><span class="o">.</span><span class="na">keys</span><span class="o">[</span><span class="n">i</span><span class="o">];</span>
+      <span class="n">selectedKeys</span><span class="o">.</span><span class="na">keys</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+
+      <span class="kd">final</span> <span class="nc">Object</span> <span class="n">a</span> <span class="o">=</span> <span class="n">k</span><span class="o">.</span><span class="na">attachment</span><span class="o">();</span>
+    
+      <span class="k">if</span> <span class="o">(</span><span class="n">a</span> <span class="k">instanceof</span> <span class="nc">AbstractNioChannel</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">processSelectedKey</span><span class="o">(</span><span class="n">k</span><span class="o">,</span> <span class="o">(</span><span class="nc">AbstractNioChannel</span><span class="o">)</span> <span class="n">a</span><span class="o">);</span>
+      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+          <span class="nd">@SuppressWarnings</span><span class="o">(</span><span class="s">"unchecked"</span><span class="o">)</span>
+          <span class="nc">NioTask</span><span class="o">&lt;</span><span class="nc">SelectableChannel</span><span class="o">&gt;</span> <span class="n">task</span> <span class="o">=</span> <span class="o">(</span><span class="nc">NioTask</span><span class="o">&lt;</span><span class="nc">SelectableChannel</span><span class="o">&gt;)</span> <span class="n">a</span><span class="o">;</span>
+          <span class="n">processSelectedKey</span><span class="o">(</span><span class="n">k</span><span class="o">,</span> <span class="n">task</span><span class="o">);</span>
+      <span class="o">}</span>
+    
+    <span class="o">...</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+    <ul>
+      <li>【4-5】获取selectedKeys，由于在Channel关闭后，SelectedSelectionKeySet可以保持对SelectionKey的强引用，所以每次取出一次要对应设置null，最后由GC 回收。</li>
+      <li>【7】 这个attachment是来自服务员端<code class="highlighter-rouge">NioServerSocketChannel</code>的Channel信息,<code class="highlighter-rouge">AbstractNioChannel#doRegister</code>中<code class="highlighter-rouge">selectionKey = javaChannel().register(eventLoop().unwrappedSelector(), 0, this);</code></li>
+      <li>【10】  processSelectedKey(k, (AbstractNioChannel) a);
+        <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+</pre></td><td class="rouge-code"><pre>  <span class="c1">//NioEventLoop</span>
+   <span class="kd">private</span> <span class="kt">void</span> <span class="nf">processSelectedKey</span><span class="o">(</span><span class="nc">SelectionKey</span> <span class="n">k</span><span class="o">,</span> <span class="nc">AbstractNioChannel</span> <span class="n">ch</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kd">final</span> <span class="nc">AbstractNioChannel</span><span class="o">.</span><span class="na">NioUnsafe</span> <span class="n">unsafe</span> <span class="o">=</span> <span class="n">ch</span><span class="o">.</span><span class="na">unsafe</span><span class="o">();</span>
+    <span class="o">...</span>
+    <span class="cm">/**
+     * OP_ACCEPT: 请求在接受新连接并创建 Channel 时获得通知
+     * OP_CONNECT: 请求在建立一个连接时获得通知
+     * OP_READ: 请求当数据已经就绪，可以从 Channel 中读取时获得通知
+     * OP_WRITE: 请求当可以向 Channel 中写更多的数据时获得通知。这处理了套接字缓冲区被完 全填满时的情况，
+     *          这种情况通常发生在数据的发送速度比远程节点可处理的速度更 快的时候
+     */</span>
+    
+        <span class="o">...</span>
+      <span class="k">if</span> <span class="o">((</span><span class="n">readyOps</span> <span class="o">&amp;</span> <span class="o">(</span><span class="nc">SelectionKey</span><span class="o">.</span><span class="na">OP_READ</span> <span class="o">|</span> <span class="nc">SelectionKey</span><span class="o">.</span><span class="na">OP_ACCEPT</span><span class="o">))</span> <span class="o">!=</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">readyOps</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">unsafe</span><span class="o">.</span><span class="na">read</span><span class="o">();</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>        </div>
+        <ul>
+          <li>【14】处理读事件ing……….</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<p>*【14】 详情见<a href="http://jinlipool.com/2019/01/30/netty-3-4-task.md/">【3-4.Netty源码:任务和定时任务队列】</a></p>
+:ET

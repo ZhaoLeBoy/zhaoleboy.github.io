@@ -1,0 +1,136 @@
+I"�<h4 id="环境配置">环境配置</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>名称</th>
+      <th>版本号</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>CentOS</td>
+      <td>7.x</td>
+    </tr>
+    <tr>
+      <td>Redis</td>
+      <td>5.0.7</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="解压缩">解压缩</h4>
+<blockquote>
+  <p>tar -zxvf redis-5.0.7.tar.gz</p>
+</blockquote>
+
+<h4 id="安装基本依赖">安装基本依赖</h4>
+<blockquote>
+  <p>yum install gcc-c++</p>
+</blockquote>
+
+<h4 id="编译安装">编译&amp;安装</h4>
+<p>make &amp; make install</p>
+
+<h4 id="配置">配置</h4>
+<p>新建一个文件夹，存放redis的配置文件，这么做为了统一风格，用户级别的程序一般都在该目录</p>
+<blockquote>
+  <p>mkdir /usr/local/redis -p</p>
+</blockquote>
+
+<p>再新建一个目录，用来作为redis工作空间，后面配置文件需要用到</p>
+<blockquote>
+  <p>mkdir /usr/local/redis/working/ -p</p>
+</blockquote>
+
+<p>将redis配置文件拷贝到指定文件目录</p>
+<blockquote>
+  <p>cd redis-5.0.7 <br />
+cp redis.conf /usr/local/redis/</p>
+</blockquote>
+
+<p>开始对配置文件进行编辑</p>
+<blockquote>
+  <p>cd  /usr/local/redis/
+vi ./redis.conf</p>
+</blockquote>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+</pre></td><td class="rouge-code"><pre><span class="c">#开启后台运行</span>
+daemonize <span class="nb">yes</span>
+<span class="c">#设置工作目录</span>
+<span class="nb">dir</span>  /usr/local/redis/working/
+<span class="c">#想被被外部访问 就设置0.0.0.0</span>
+<span class="nb">bind </span>0.0.0.0
+<span class="c">#如果不限制访问，就保护模式给关闭。如果设置不好，会影响后面的主从和哨兵模式</span>
+protected-mode no
+<span class="c">#账户密码</span>
+requirepass xxxx
+<span class="c">#端口 可以不改</span>
+port 6379
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>修改配置文件后 就可以直接启动了</p>
+<blockquote>
+  <p>resid-server</p>
+</blockquote>
+
+<h4 id="开机自启动">开机自启动</h4>
+
+<p>先进入解压后的rdis文件夹</p>
+<blockquote>
+  <p>cd /root/redis-5.0.7/utils</p>
+</blockquote>
+
+<p>拷贝里面的初始化启动脚本</p>
+<blockquote>
+  <p>cp redis_init_script /etc/init.d/</p>
+</blockquote>
+
+<p>紧接着进入init.d文件夹，修改对应脚本</p>
+<blockquote>
+  <p>cd /etc/init.d/ <br />
+vi redis_init_script</p>
+</blockquote>
+
+<p>这里面有两处要修改</p>
+
+<p><img src="/img/redis/basic/1.png" alt="1" /></p>
+<blockquote>
+  <p>CONF=”/usr/local/redis/redis.conf”</p>
+</blockquote>
+
+<p>在头部注释的后面添加下面这一段</p>
+<blockquote>
+  <p>#chkconfig: 2345 10 90 <br />
+#description: Start and Stop redis
+<img src="/img/redis/basic/2.png" alt="2" /></p>
+</blockquote>
+
+<p>修改完毕配置文件后，将它注册到开机自启动中</p>
+<blockquote>
+  <p>chkconfig redis_init_script on</p>
+</blockquote>
+
+<p><a href="https://blog.csdn.net/amazingYu/article/details/81319457">Linux下chkconfig命令详解</a></p>
+
+<p>手动启动redis</p>
+<blockquote>
+  <p>sh redis_init_script start
+<img src="/img/redis/basic/3.png" alt="3" /></p>
+</blockquote>
+
+<p>可以将服务器重启然后使用<code class="highlighter-rouge">ps -ef|grep redis</code>是否已经成功启动</p>
+
+:ET

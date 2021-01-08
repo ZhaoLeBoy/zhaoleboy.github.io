@@ -1,0 +1,217 @@
+I"�/<h3 id="概述">概述</h3>
+<p>首先整个循环是个死循环，进行事件监测
+select的方法做了三件事：</p>
+<ol>
+  <li>必要的逻辑判断。</li>
+  <li>阻塞式select操作。</li>
+  <li>避免jdk空轮训bug。</li>
+</ol>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+</pre></td><td class="rouge-code"><pre> <span class="c1">//NioEventLoop.java</span>
+  <span class="nd">@Override</span>
+  <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+    <span class="k">for</span> <span class="o">(;</span> <span class="o">;</span> <span class="o">)</span> <span class="o">{</span>
+      <span class="k">try</span> <span class="o">{</span>
+        <span class="k">switch</span> <span class="o">(</span><span class="n">selectStrategy</span><span class="o">.</span><span class="na">calculateStrategy</span><span class="o">(</span><span class="n">selectNowSupplier</span><span class="o">,</span> <span class="n">hasTasks</span><span class="o">()))</span> <span class="o">{</span>
+          <span class="o">...</span>
+            <span class="k">case</span> <span class="nc">SelectStrategy</span><span class="o">.</span><span class="na">SELECT</span><span class="o">:</span>
+                <span class="c1">//检测IO事件</span>
+                <span class="n">select</span><span class="o">(</span><span class="n">wakenUp</span><span class="o">.</span><span class="na">getAndSet</span><span class="o">(</span><span class="kc">false</span><span class="o">));</span>
+          <span class="o">...</span>
+        <span class="o">}</span>
+         <span class="o">...</span>
+      <span class="o">}</span> 
+     <span class="o">...</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<blockquote>
+  <p>因为这段代码过长，所以解释方法就直接写在代码里面了方便查看</p>
+</blockquote>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+</pre></td><td class="rouge-code"><pre> <span class="c1">//NioEventLoop.java</span>
+<span class="kd">private</span> <span class="kt">void</span> <span class="nf">select</span><span class="o">(</span><span class="kt">boolean</span> <span class="n">oldWakenUp</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">IOException</span> <span class="o">{</span>
+  <span class="nc">Selector</span> <span class="n">selector</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">selector</span><span class="o">;</span>
+  <span class="k">try</span> <span class="o">{</span>
+    <span class="kt">int</span> <span class="n">selectCnt</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>     <span class="c1">//记录轮训次数（主要针对空轮训计数）</span>
+    <span class="kt">long</span> <span class="n">currentTimeNanos</span> <span class="o">=</span> <span class="nc">System</span><span class="o">.</span><span class="na">nanoTime</span><span class="o">();</span> <span class="c1">//当前时间</span>
+
+    <span class="c1">//delayNanos(currentTimeNanos)获取延迟任务队列中第一个任务截止时间，</span>
+    <span class="c1">//如果返回时空则默认1s，selectDeadLineNanos是记录这次select操作的截止时间。</span>
+    <span class="kt">long</span> <span class="n">selectDeadLineNanos</span> <span class="o">=</span> <span class="n">currentTimeNanos</span> <span class="o">+</span> <span class="n">delayNanos</span><span class="o">(</span><span class="n">currentTimeNanos</span><span class="o">);</span>
+
+    <span class="k">for</span> <span class="o">(;</span> <span class="o">;</span> <span class="o">)</span> <span class="o">{</span>
+        
+        <span class="c1">// 本次select任务超时时间  500000L做个微调值   除1000000L 是为了纳秒转为毫秒</span>
+        <span class="kt">long</span> <span class="n">timeoutMillis</span> <span class="o">=</span> <span class="o">(</span><span class="n">selectDeadLineNanos</span> <span class="o">-</span> <span class="n">currentTimeNanos</span> <span class="o">+</span> <span class="mi">500000L</span><span class="o">)</span> <span class="o">/</span> <span class="mi">1000000L</span><span class="o">;</span>
+
+        <span class="k">if</span> <span class="o">(</span><span class="n">timeoutMillis</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span><span class="c1">// 时间不足1ms，不再进行select操作。</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">selectCnt</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span><span class="c1">//一次select操作没有进行</span>
+            <span class="n">selector</span><span class="o">.</span><span class="na">selectNow</span><span class="o">();</span><span class="c1">//非堵塞的select方法 立即返回事件</span>
+            <span class="n">selectCnt</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="k">break</span><span class="o">;</span>
+        <span class="o">}</span>
+
+        <span class="cm">/*轮询过程中发现有任务加入，中断本次轮询。
+        * netty为了保证任务队列能够及时执行，在进行阻塞select操作的时候会判断任务队列是否为空，
+        *如果不为空，就执行一次非阻塞select操作，跳出循环
+        */</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">hasTasks</span><span class="o">()</span> <span class="o">&amp;&amp;</span> <span class="n">wakenUp</span><span class="o">.</span><span class="na">compareAndSet</span><span class="o">(</span><span class="kc">false</span><span class="o">,</span> <span class="kc">true</span><span class="o">))</span> <span class="o">{</span>
+            <span class="n">selector</span><span class="o">.</span><span class="na">selectNow</span><span class="o">();</span><span class="c1">//非堵塞select方法</span>
+            <span class="n">selectCnt</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
+            <span class="k">break</span><span class="o">;</span>
+        <span class="o">}</span>
+
+        <span class="c1">//堵塞， 调用了 selector.select(timeoutMillis), 而这个调用是会阻塞住当前线程的, timeoutMillis 是阻塞的超时时间.</span>
+        <span class="kt">int</span> <span class="n">selectedKeys</span> <span class="o">=</span> <span class="n">selector</span><span class="o">.</span><span class="na">select</span><span class="o">(</span><span class="n">timeoutMillis</span><span class="o">);</span>
+        <span class="n">selectCnt</span><span class="o">++;</span>
+
+        <span class="c1">//说明有任务或者有正在处理的任务，</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">selectedKeys</span> <span class="o">!=</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">oldWakenUp</span> <span class="o">||</span> <span class="n">wakenUp</span><span class="o">.</span><span class="na">get</span><span class="o">()</span> <span class="o">||</span> <span class="n">hasTasks</span><span class="o">()</span> <span class="o">||</span> <span class="n">hasScheduledTasks</span><span class="o">())</span> <span class="o">{</span>
+            <span class="c1">// - Selected something,</span>
+            <span class="c1">// - waken up by user, or</span>
+            <span class="c1">// - the task queue has a pending task.</span>
+            <span class="c1">// - a scheduled task is ready for processing</span>
+            <span class="k">break</span><span class="o">;</span>
+        <span class="o">}</span>
+
+        <span class="c1">//线程断了。。。</span>
+        <span class="k">if</span> <span class="o">(</span><span class="nc">Thread</span><span class="o">.</span><span class="na">interrupted</span><span class="o">())</span> <span class="o">{</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">logger</span><span class="o">.</span><span class="na">isDebugEnabled</span><span class="o">())</span> <span class="o">{</span>
+                <span class="o">...</span>
+            <span class="o">}</span>
+            <span class="n">selectCnt</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
+            <span class="k">break</span><span class="o">;</span>
+        <span class="o">}</span>
+
+        <span class="c1">//到这个地方已经发生过堵塞操作 记录时间</span>
+        <span class="kt">long</span> <span class="n">time</span> <span class="o">=</span> <span class="nc">System</span><span class="o">.</span><span class="na">nanoTime</span><span class="o">();</span>
+
+        <span class="c1">//time - currentTimeNanos 小于TimeUnit.MILLISECONDS.toNanos(timeoutMillis)</span>
+        <span class="c1">//完成一次堵塞操作的时间 - 轮训前的时间 &lt; 任务超时时间   说明实际上没有发生堵塞 ，空轮训了。。</span>
+        <span class="cm">/**
+        * 大致可以这么看 ，执行select前记录下时间  30s ， 执行一个select时间要60s   , 执行select后 记录时间 50s 
+        * [如果执行select后的时间]  - [执行selelct需要的时间] &lt; [执行select前记录时间] ，说明了 这个select 操作是没有发生，空轮循了一次
+        */</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">time</span> <span class="o">-</span> <span class="nc">TimeUnit</span><span class="o">.</span><span class="na">MILLISECONDS</span><span class="o">.</span><span class="na">toNanos</span><span class="o">(</span><span class="n">timeoutMillis</span><span class="o">)</span> <span class="o">&gt;=</span> <span class="n">currentTimeNanos</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">selectCnt</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="no">SELECTOR_AUTO_REBUILD_THRESHOLD</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span>
+                <span class="n">selectCnt</span> <span class="o">&gt;=</span> <span class="no">SELECTOR_AUTO_REBUILD_THRESHOLD</span><span class="o">)</span> <span class="o">{</span><span class="c1">//512次</span>
+            <span class="c1">//大于一个阈值 默认512</span>
+            <span class="c1">//老的select重新注册新的selector 防止空轮训</span>
+            <span class="n">rebuildSelector</span><span class="o">();</span>
+            <span class="n">selector</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">selector</span><span class="o">;</span>
+
+            <span class="n">selector</span><span class="o">.</span><span class="na">selectNow</span><span class="o">();</span>
+            <span class="n">selectCnt</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
+            <span class="k">break</span><span class="o">;</span>
+        <span class="o">}</span>
+
+        <span class="n">currentTimeNanos</span> <span class="o">=</span> <span class="n">time</span><span class="o">;</span>
+    <span class="o">}</span> 
+<span class="o">...</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+:ET

@@ -1,0 +1,32 @@
+I"4<p>通过一个例子来展开说明</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class="rouge-code"><pre> <span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyChannelInitializer</span> <span class="kd">extends</span> <span class="nc">ChannelInitializer</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">initChannel</span><span class="o">(</span><span class="nc">Channel</span> <span class="n">channel</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">channel</span><span class="o">.</span><span class="na">pipeline</span><span class="o">().</span><span class="na">addLast</span><span class="o">(</span><span class="s">"myHandler"</span><span class="o">,</span> <span class="k">new</span> <span class="nc">MyHandler</span><span class="o">());</span>
+    <span class="o">}</span>
+ <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<h3 id="addlast">addLast()</h3>
+<p>用户一般使用addLast()方法增加自定义handler
+```java
+//DefaultChannelPipeLine.java
+public final ChannelPipeline addLast(EventExecutorGroup group, String name, ChannelHandler handler) {
+  final AbstractChannelHandlerContext newCtx;
+  synchronized (this) {</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class="rouge-code"><pre>checkMultiplicity(handler);
+
+newCtx = newContext(group, filterName(name, handler), handler);
+
+addLast0(newCtx);
+</pre></td></tr></tbody></table></code></pre></div></div>
+:ET

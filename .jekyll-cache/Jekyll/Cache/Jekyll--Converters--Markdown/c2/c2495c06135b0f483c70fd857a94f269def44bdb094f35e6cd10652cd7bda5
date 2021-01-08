@@ -1,0 +1,6 @@
+I"-<p>之前写过两篇文章,是关于ReentrantLock。</p>
+<ul>
+  <li><a href="http://jinlipool.com/2019/06/24/reetrantlock_1/">1.ReetrantLock:单线程下的加锁过程</a></li>
+  <li><a href="http://jinlipool.com/2019/06/24/reetrantlock_2/">2.ReetrantLock:多线程下的加锁过程</a></li>
+</ul>
+:ET

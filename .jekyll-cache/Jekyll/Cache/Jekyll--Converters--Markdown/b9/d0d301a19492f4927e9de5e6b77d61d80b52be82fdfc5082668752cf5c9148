@@ -1,0 +1,3 @@
+I"k<h5 id="原理">原理</h5>
+<p>通过字节码，可以看出来，synchronized在修饰代码块同时 由monitorenter和monitorexit指令来实现同步的，进入monitorenter指令后，线程将持有<code class="highlighter-rouge">Monitor</code>对象，退出moniitorenter指令后，线程将释放<code class="highlighter-rouge">Monitor</code>对象</p>
+:ET

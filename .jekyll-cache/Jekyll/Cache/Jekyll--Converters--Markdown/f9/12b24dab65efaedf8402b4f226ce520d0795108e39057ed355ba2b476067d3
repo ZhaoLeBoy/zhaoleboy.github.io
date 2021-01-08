@@ -1,0 +1,153 @@
+I"�$<h3 id="概述">概述</h3>
+<p>服务端的channel是通过反射创建出来的，具体这个<code class="highlighter-rouge">NioServerSocketChannel</code>的初始化是在什么时候发生的后面会介绍。先看这个类的无参构造方法。</p>
+
+<p><code class="highlighter-rouge">NioServerSocketChannel</code>的类的继承关系图,有删减</p>
+
+<p><img src="/img/netty/1-2-1/1.jpg" alt="IMAGE" /></p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class="rouge-code"><pre><span class="c1">//无参构造方法 </span>
+<span class="kd">public</span> <span class="nf">NioServerSocketChannel</span><span class="o">()</span> <span class="o">{</span>
+    <span class="k">this</span><span class="o">(</span><span class="n">newSocket</span><span class="o">(</span><span class="no">DEFAULT_SELECTOR_PROVIDER</span><span class="o">));</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>NioServerSocketChannel初始化做的三件事情:</p>
+<ol>
+  <li>调用jdk底层创建ServerSocketChannel</li>
+  <li>继承父类设置channel相关配置</li>
+  <li>创建<code class="highlighter-rouge">ServerSocketChannelConfig</code>类</li>
+</ol>
+
+<h3 id="1-调用jdk底层创建serversocketchannel">1. 调用jdk底层创建ServerSocketChannel</h3>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+</pre></td><td class="rouge-code"><pre><span class="kd">private</span> <span class="kd">static</span> <span class="nc">ServerSocketChannel</span> <span class="nf">newSocket</span><span class="o">(</span><span class="nc">SelectorProvider</span> <span class="n">provider</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">try</span> <span class="o">{</span>
+        <span class="cm">/**
+         * 默认实现是在{ ServerSocketChannel#open
+         * SelectorProvider.provider().openServerSocketChannel();
+         *See &lt;a href="https://github.com/netty/netty/issues/2308"&gt;#2308&lt;/a&gt;.
+         *  当前的SelectorProviderde provider方法，这个方法包含了一个同步代码块，
+         *  每创建一个新的channel都会去调用这个方法，执行里面的同步代码块。
+         *  当应用创建许多的连接的时候，这个会导致不必要的阻塞，每秒创建5000个连接的时候，性能会下降1%
+         *
+         *  可能的解决方案是存储provider方法的结果，然后直接用selectorProvider的openSocketChannel创建channel,而不是使用SocketChannel的open方法。
+         *  所以在Netty最近的版本中，确实对这个方案进行了实现，将provider直接设置成SocketChannel类的静态成员，并进行初始化赋值。
+         */</span>
+  
+        <span class="c1">//创建一个新的channel</span>
+        <span class="k">return</span> <span class="n">provider</span><span class="o">.</span><span class="na">openServerSocketChannel</span><span class="o">();</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+       <span class="o">...</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<ul>
+  <li>【16】使用jdk底层创建一个ServerSocketChannel</li>
+</ul>
+
+<h3 id="2-继承父类设置channel相关配置">2. 继承父类设置channel相关配置</h3>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre><span class="kd">public</span> <span class="nf">NioServerSocketChannel</span><span class="o">(</span><span class="nc">ServerSocketChannel</span> <span class="n">channel</span><span class="o">)</span> <span class="o">{</span>
+  <span class="kd">super</span><span class="o">(</span><span class="kc">null</span><span class="o">,</span> <span class="n">channel</span><span class="o">,</span> <span class="nc">SelectionKey</span><span class="o">.</span><span class="na">OP_ACCEPT</span><span class="o">);</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<ul>
+  <li>【2】注意这个SelectionKey.OP_ACCEPT，如果是服务端的channel，则是OP_ACCEPT，用来检测新连接在轮训中，表示请求在接受新连接并创建 Channel 时获得通知</li>
+</ul>
+
+<blockquote>
+  <p>继承链如下：
+NioServerSocketChannel-&gt;AbstractNioMessageChannel-&gt;AbstractNioChannel-&gt;AbstractChannel
+重要的几个方法是在<code class="highlighter-rouge">AbstractNioChannel</code>，<code class="highlighter-rouge">AbstractChannel</code></p>
+</blockquote>
+
+<ul>
+  <li>AbstractNioChannel</li>
+</ul>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="rouge-code"><pre><span class="kd">protected</span> <span class="nf">AbstractNioChannel</span><span class="o">(</span><span class="nc">Channel</span> <span class="n">parent</span><span class="o">,</span> <span class="nc">SelectableChannel</span> <span class="n">ch</span><span class="o">,</span> <span class="kt">int</span> <span class="n">readInterestOp</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kd">super</span><span class="o">(</span><span class="n">parent</span><span class="o">);</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">ch</span> <span class="o">=</span> <span class="n">ch</span><span class="o">;</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">readInterestOp</span> <span class="o">=</span> <span class="n">readInterestOp</span><span class="o">;</span>
+    <span class="k">try</span> <span class="o">{</span>
+        <span class="n">ch</span><span class="o">.</span><span class="na">configureBlocking</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+        <span class="o">...</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre>* 【6】 调用jdk底层设置channel的非阻塞模式
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<ul>
+  <li>
+    <p>AbstractChannel</p>
+
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre></td><td class="rouge-code"><pre><span class="kd">protected</span> <span class="nf">AbstractChannel</span><span class="o">(</span><span class="nc">Channel</span> <span class="n">parent</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">parent</span> <span class="o">=</span> <span class="n">parent</span><span class="o">;</span>
+    <span class="n">id</span> <span class="o">=</span> <span class="n">newId</span><span class="o">();</span>
+    <span class="n">unsafe</span> <span class="o">=</span> <span class="n">newUnsafe</span><span class="o">();</span>
+    <span class="n">pipeline</span> <span class="o">=</span> <span class="n">newChannelPipeline</span><span class="o">();</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+    <p>【3】channel的唯一标识
+【4】//TODO底层读写跟tcp有关。
+【5】为这个channel实例化个pipeline对象,  pipline就是双向链表结构模型，会在后续文章展开说明。</p>
+  </li>
+</ul>
+
+<h3 id="3-创建serversocketchannelconfig类">3. 创建<code class="highlighter-rouge">ServerSocketChannelConfig</code>类</h3>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre> <span class="n">config</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">NioServerSocketChannelConfig</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">javaChannel</span><span class="o">().</span><span class="na">socket</span><span class="o">());</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<ul>
+  <li>【1】 将ServerSocketChannel作为构造函数参数之一，用于给channel配置TCP的一些配置</li>
+</ul>
+
+<hr />
+<p>TODO:pipeline文章</p>
+:ET

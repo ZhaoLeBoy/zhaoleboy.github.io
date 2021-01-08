@@ -1,0 +1,4 @@
+I"g<p>主要就是对Netty中的Future和ChannelFuture的文档大概翻译一下，Netty的文档写的比较详细，认真看下来也是收获颇多。
+Netty中也有个Future接口，在<code class="highlighter-rouge">io.netty.util.concurrent</code>包中。
+jdk自带的Future接口是在<code class="highlighter-rouge">java.utail.concurrent</code>。</p>
+:ET

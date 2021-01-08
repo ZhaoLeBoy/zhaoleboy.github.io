@@ -1,0 +1,152 @@
+I"L8<p>创建session具体实现是在<code class="highlighter-rouge">RedisOperationsSessionRepository</code>中</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+</pre></td><td class="rouge-code"><pre><span class="nd">@Override</span>
+<span class="kd">public</span> <span class="nc">RedisSession</span> <span class="nf">createSession</span><span class="o">()</span> <span class="o">{</span>
+	<span class="nc">RedisSession</span> <span class="n">redisSession</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">RedisSession</span><span class="o">();</span>
+	<span class="k">if</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">defaultMaxInactiveInterval</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+		<span class="n">redisSession</span><span class="o">.</span><span class="na">setMaxInactiveInterval</span><span class="o">(</span>
+				<span class="nc">Duration</span><span class="o">.</span><span class="na">ofSeconds</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">defaultMaxInactiveInterval</span><span class="o">));</span>
+	<span class="o">}</span>
+	<span class="k">return</span> <span class="n">redisSession</span><span class="o">;</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<ul>
+  <li>【3】new出一个RedisSession对象，简简单单一行，里面的学问倒是挺多的。</li>
+</ul>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+</pre></td><td class="rouge-code"><pre><span class="c1">//RedisSession.java</span>
+<span class="nc">RedisSession</span><span class="o">()</span> <span class="o">{</span>
+	<span class="k">this</span><span class="o">(</span><span class="k">new</span> <span class="nc">MapSession</span><span class="o">());</span>
+	<span class="k">this</span><span class="o">.</span><span class="na">delta</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="no">CREATION_TIME_ATTR</span><span class="o">,</span> <span class="n">getCreationTime</span><span class="o">().</span><span class="na">toEpochMilli</span><span class="o">());</span>
+	<span class="k">this</span><span class="o">.</span><span class="na">delta</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="no">MAX_INACTIVE_ATTR</span><span class="o">,</span> <span class="o">(</span><span class="kt">int</span><span class="o">)</span> <span class="n">getMaxInactiveInterval</span><span class="o">().</span><span class="na">getSeconds</span><span class="o">());</span>
+	<span class="k">this</span><span class="o">.</span><span class="na">delta</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="no">LAST_ACCESSED_ATTR</span><span class="o">,</span> <span class="n">getLastAccessedTime</span><span class="o">().</span><span class="na">toEpochMilli</span><span class="o">());</span>
+	<span class="k">this</span><span class="o">.</span><span class="na">isNew</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+	<span class="k">this</span><span class="o">.</span><span class="na">flushImmediateIfNecessary</span><span class="o">();</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre></td><td class="rouge-code"><pre><span class="c1">//RedisSession.java</span>
+<span class="kd">private</span> <span class="kt">void</span> <span class="nf">flushImmediateIfNecessary</span><span class="o">()</span> <span class="o">{</span>
+	<span class="k">if</span> <span class="o">(</span><span class="nc">RedisOperationsSessionRepository</span><span class="o">.</span><span class="na">this</span><span class="o">.</span><span class="na">redisFlushMode</span> <span class="o">==</span> <span class="nc">RedisFlushMode</span><span class="o">.</span><span class="na">IMMEDIATE</span><span class="o">)</span> <span class="o">{</span>
+		<span class="n">saveDelta</span><span class="o">();</span>
+	<span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>说<code class="highlighter-rouge">flushImmediateIfNecessary</code>方法之前，先要知道在SpringSession中将数据写入Redis实例有两种模式<code class="highlighter-rouge">ON_SAVE</code>(默认)和<code class="highlighter-rouge">IMMEDIATE</code>，可以再<code class="highlighter-rouge">application.properties</code>文件中配置，例如<code class="highlighter-rouge">spring.session.redis.flush-mode=immediate</code>，这两种的区别在于:</p>
+
+<ul>
+  <li><code class="highlighter-rouge">ON_SAVE模式</code>:只有当主动调用的时候(SessionRepository#save)才会被触发,在web环境中通常是在提交HTTP响应的时候完成，所以它是默认模式</li>
+  <li><code class="highlighter-rouge">IMMEDIATE模式</code>:尽可能快的写入redis，在创建新的session时候就调用(SessionRepository#createSession())或者在session上设置attribute的时候也是会立刻写入redis</li>
+</ul>
+
+<p>所以在默认情况下<code class="highlighter-rouge">this.flushImmediateIfNecessary</code>中的<code class="highlighter-rouge">saveDelta</code>不会被执行到，但是最后在commit阶段会执行保存动作，所以我们就放在这边一起看了，<code class="highlighter-rouge">saveDelta</code>方法保存已更改的任何属性，并更新此session的到期日期。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+</pre></td><td class="rouge-code"><pre><span class="kd">private</span> <span class="kt">void</span> <span class="nf">saveDelta</span><span class="o">()</span> <span class="o">{</span>
+	<span class="nc">String</span> <span class="n">sessionId</span> <span class="o">=</span> <span class="n">getId</span><span class="o">();</span>
+	<span class="n">saveChangeSessionId</span><span class="o">(</span><span class="n">sessionId</span><span class="o">);</span>
+	<span class="k">if</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">delta</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">())</span> <span class="o">{</span>
+		<span class="k">return</span><span class="o">;</span>
+	<span class="o">}</span>
+	<span class="n">getSessionBoundHashOperations</span><span class="o">(</span><span class="n">sessionId</span><span class="o">).</span><span class="na">putAll</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">delta</span><span class="o">);</span>
+	
+	<span class="nc">String</span> <span class="n">principalSessionKey</span> <span class="o">=</span> <span class="n">getSessionAttrNameKey</span><span class="o">(</span><span class="nc">FindByIndexNameSessionRepository</span><span class="o">.</span><span class="na">PRINCIPAL_NAME_INDEX_NAME</span><span class="o">);</span>
+	<span class="nc">String</span> <span class="n">securityPrincipalSessionKey</span> <span class="o">=</span> <span class="n">getSessionAttrNameKey</span><span class="o">(</span><span class="no">SPRING_SECURITY_CONTEXT</span><span class="o">);</span>
+	
+	<span class="k">if</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">delta</span><span class="o">.</span><span class="na">containsKey</span><span class="o">(</span><span class="n">principalSessionKey</span><span class="o">)</span>	<span class="o">||</span> <span class="k">this</span><span class="o">.</span><span class="na">delta</span><span class="o">.</span><span class="na">containsKey</span><span class="o">(</span><span class="n">securityPrincipalSessionKey</span><span class="o">))</span> <span class="o">{</span>
+		<span class="k">if</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">originalPrincipalName</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+			<span class="nc">String</span> <span class="n">originalPrincipalRedisKey</span> <span class="o">=</span> <span class="n">getPrincipalKey</span><span class="o">(</span>
+					<span class="k">this</span><span class="o">.</span><span class="na">originalPrincipalName</span><span class="o">);</span>
+			<span class="nc">RedisOperationsSessionRepository</span><span class="o">.</span><span class="na">this</span><span class="o">.</span><span class="na">sessionRedisOperations</span>
+					<span class="o">.</span><span class="na">boundSetOps</span><span class="o">(</span><span class="n">originalPrincipalRedisKey</span><span class="o">).</span><span class="na">remove</span><span class="o">(</span><span class="n">sessionId</span><span class="o">);</span>
+		<span class="o">}</span>
+		<span class="nc">String</span> <span class="n">principal</span> <span class="o">=</span> <span class="no">PRINCIPAL_NAME_RESOLVER</span><span class="o">.</span><span class="na">resolvePrincipal</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+		<span class="k">this</span><span class="o">.</span><span class="na">originalPrincipalName</span> <span class="o">=</span> <span class="n">principal</span><span class="o">;</span>
+		<span class="k">if</span> <span class="o">(</span><span class="n">principal</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+			<span class="nc">String</span> <span class="n">principalRedisKey</span> <span class="o">=</span> <span class="n">getPrincipalKey</span><span class="o">(</span><span class="n">principal</span><span class="o">);</span>
+			<span class="nc">RedisOperationsSessionRepository</span><span class="o">.</span><span class="na">this</span><span class="o">.</span><span class="na">sessionRedisOperations</span>
+					<span class="o">.</span><span class="na">boundSetOps</span><span class="o">(</span><span class="n">principalRedisKey</span><span class="o">).</span><span class="na">add</span><span class="o">(</span><span class="n">sessionId</span><span class="o">);</span>
+		<span class="o">}</span>
+	<span class="o">}</span>
+
+	<span class="k">this</span><span class="o">.</span><span class="na">delta</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">&lt;&gt;(</span><span class="k">this</span><span class="o">.</span><span class="na">delta</span><span class="o">.</span><span class="na">size</span><span class="o">());</span>
+
+	<span class="nc">Long</span> <span class="n">originalExpiration</span> <span class="o">=</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">originalLastAccessTime</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span>
+			<span class="o">?</span> <span class="k">this</span><span class="o">.</span><span class="na">originalLastAccessTime</span><span class="o">.</span><span class="na">plus</span><span class="o">(</span><span class="n">getMaxInactiveInterval</span><span class="o">()).</span><span class="na">toEpochMilli</span><span class="o">()</span> <span class="o">:</span> <span class="kc">null</span><span class="o">;</span>
+	<span class="nc">RedisOperationsSessionRepository</span><span class="o">.</span><span class="na">this</span><span class="o">.</span><span class="na">expirationPolicy</span>
+			<span class="o">.</span><span class="na">onExpirationUpdated</span><span class="o">(</span><span class="n">originalExpiration</span><span class="o">,</span> <span class="k">this</span><span class="o">);</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>在<code class="highlighter-rouge">RedisSession</code>中维护着一个<code class="highlighter-rouge">cache</code>，是属于<code class="highlighter-rouge">MapSession</code>类型，里面存放着最新跟session有关的基本信息例如<code class="highlighter-rouge">creationTime</code>,<code class="highlighter-rouge">lastAccessedTime</code>和所有的<code class="highlighter-rouge">sessionAttrs</code>等。<code class="highlighter-rouge">RedisSession</code>本身也有一些成员变量如<code class="highlighter-rouge">originalLastAccessTime</code>，<code class="highlighter-rouge">originalSessionId</code>和<code class="highlighter-rouge">delta</code>等等，其中<code class="highlighter-rouge">delta</code>是个Map类型，用来存放当前一些变更的对象(delta符号在数学公式里就表示变化的量)，默认的取值是从<code class="highlighter-rouge">cache</code>来的</p>
+
+<ul>
+  <li>【2】获取<code class="highlighter-rouge">cache</code>中的id</li>
+  <li>【3】将cache中的id和原始的<code class="highlighter-rouge">originalSessionId</code>进行比较，如果不同并且不是新创建的session，就会将
+<code class="highlighter-rouge">originalSessionId</code>和<code class="highlighter-rouge">originalExpiredKey</code>给替换掉。</li>
+  <li>【7】根据sessionId将<code class="highlighter-rouge">delta</code>的值持久化写入redis</li>
+  <li>【9-26】获取sessionAttr属性<code class="highlighter-rouge">PRINCIPAL_NAME_INDEX_NAME</code>和<code class="highlighter-rouge">SPRING_SECURITY_CONTEXT</code>并且对其处理,本质上也是做替换。</li>
+  <li>【28】已经处理+持久化完delta里面的参数了，可以进行初始化。</li>
+  <li>【30-31】刷新下过期时间，直接拿最后访问时间+最大过期间隔（默认30分钟）</li>
+  <li>【32-33】SpringSession有自己的过期时间处理策略，//TODO….</li>
+</ul>
+
+:ET

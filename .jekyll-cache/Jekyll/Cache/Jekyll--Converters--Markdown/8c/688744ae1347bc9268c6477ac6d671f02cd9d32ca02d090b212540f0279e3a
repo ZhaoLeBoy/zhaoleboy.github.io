@@ -1,0 +1,179 @@
+I"P1<h3 id="一个简单的demo">一个简单的demo</h3>
+
+<p>首先通过一个Demo来展示在单线程模式下ReetrantLock加锁和释放锁的过程</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="rouge-code"><pre><span class="c1">//Demo</span>
+<span class="kd">private</span> <span class="kd">static</span> <span class="nc">ReentrantLock</span> <span class="n">lock</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ReentrantLock</span><span class="o">();</span>
+
+<span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="nc">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">lock</span><span class="o">.</span><span class="na">lock</span><span class="o">();</span>
+    <span class="n">lock</span><span class="o">.</span><span class="na">lock</span><span class="o">();</span>
+    <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"Hello World"</span><span class="o">);</span>
+    <span class="n">lock</span><span class="o">.</span><span class="na">unlock</span><span class="o">();</span>
+    <span class="n">lock</span><span class="o">.</span><span class="na">unlock</span><span class="o">();</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>通过例子+运行时候的断点，我们开始学习源码。</p>
+
+<h3 id="lock">Lock</h3>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class="rouge-code"><pre><span class="c1">//ReentrantLock.java</span>
+<span class="kd">public</span> <span class="nf">ReentrantLock</span><span class="o">()</span> <span class="o">{</span>
+    <span class="n">sync</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">NonfairSync</span><span class="o">();</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>首先是实例化一个ReentrantLock实例，然后可以跟着断点看看实例化具体流程。</p>
+
+<p><code class="highlighter-rouge">NonfairSync-&gt;abstract Sync- abstract &gt;AbstractQueuedSynchronizer</code></p>
+
+<p><code class="highlighter-rouge">NonfairSync-&gt;abstract Sync</code></p>
+
+<p>默认情况下ReentrantLock是使用非公平锁方式，也是就是默认使用<code class="highlighter-rouge">NonfairSync</code>这个类来做具体实例化工作。</p>
+
+<p>实例化完后准备获取锁了，具体代码流程如下。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="rouge-code"><pre><span class="c1">//NonfairSync.java</span>
+<span class="kd">final</span> <span class="kt">void</span> <span class="nf">lock</span><span class="o">()</span> <span class="o">{</span>
+<span class="k">if</span> <span class="o">(</span><span class="n">compareAndSetState</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="mi">1</span><span class="o">))</span>
+    <span class="n">setExclusiveOwnerThread</span><span class="o">(</span><span class="nc">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">());</span>
+<span class="k">else</span>
+    <span class="nf">acquire</span><span class="o">(</span><span class="mi">1</span><span class="o">);</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<ul>
+  <li>
+    <p>【3-4】由于是刚启动，第一次调用<code class="highlighter-rouge">lock</code>方法，所以在调用<code class="highlighter-rouge">compareAndSetState</code>直接加锁成功。<code class="highlighter-rouge">state</code>变为1，并且通过<code class="highlighter-rouge">setExclusiveOwnerThread</code>将当前线程设置为已经拥有锁的线程。业务代码第一次调用<code class="highlighter-rouge">lock.lock()</code>加锁就成功了，结束第一次调用。</p>
+  </li>
+  <li>
+    <p>【6】然后紧接着在业务代码第二次调用<code class="highlighter-rouge">lock.lock()</code>，由于前一次线程加锁成功，所以此时的CAS方法会失败，断点会走到<code class="highlighter-rouge">acquire(1);</code>,具体实现方法是在<code class="highlighter-rouge">NonfairSync#tryAcquire-&gt;Sync#nonfairTryAcquire</code></p>
+  </li>
+</ul>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+</pre></td><td class="rouge-code"><pre><span class="c1">//ReentrantLock.java</span>
+<span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">nonfairTryAcquire</span><span class="o">(</span><span class="kt">int</span> <span class="n">acquires</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kd">final</span> <span class="nc">Thread</span> <span class="n">current</span> <span class="o">=</span> <span class="nc">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">();</span>
+    <span class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span class="n">getState</span><span class="o">();</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">c</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">compareAndSetState</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="n">acquires</span><span class="o">))</span> <span class="o">{</span>
+            <span class="n">setExclusiveOwnerThread</span><span class="o">(</span><span class="n">current</span><span class="o">);</span>
+            <span class="k">return</span> <span class="kc">true</span><span class="o">;</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="n">current</span> <span class="o">==</span> <span class="n">getExclusiveOwnerThread</span><span class="o">())</span> <span class="o">{</span>
+        <span class="kt">int</span> <span class="n">nextc</span> <span class="o">=</span> <span class="n">c</span> <span class="o">+</span> <span class="n">acquires</span><span class="o">;</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">nextc</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span> <span class="c1">// overflow</span>
+            <span class="k">throw</span> <span class="k">new</span> <span class="nf">Error</span><span class="o">(</span><span class="s">"Maximum lock count exceeded"</span><span class="o">);</span>
+        <span class="n">setState</span><span class="o">(</span><span class="n">nextc</span><span class="o">);</span>
+        <span class="k">return</span> <span class="kc">true</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="k">return</span> <span class="kc">false</span><span class="o">;</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<ul>
+  <li>【3-4】获取当前线程已经线程状态，当前线程已经加锁了，所以state肯定不是0</li>
+  <li>【11-16】判断当前线程是不是已经获取到锁了，如果是已经获取到锁，则对state进行累加，所以<code class="highlighter-rouge">ReetrantLock</code>对于同一个线程获多次在内部是通过累加来进行记录的。</li>
+</ul>
+
+<h3 id="unlock">unLock</h3>
+
+<p>加锁结束后继续跟进代码到释放这一快。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="rouge-code"><pre><span class="c1">//AbstractQueuedSynchronizer.java</span>
+<span class="kd">public</span> <span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">release</span><span class="o">(</span><span class="kt">int</span> <span class="n">arg</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">tryRelease</span><span class="o">(</span><span class="n">arg</span><span class="o">))</span> <span class="o">{</span>
+        <span class="nc">Node</span> <span class="n">h</span> <span class="o">=</span> <span class="n">head</span><span class="o">;</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">h</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">h</span><span class="o">.</span><span class="na">waitStatus</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span>
+            <span class="n">unparkSuccessor</span><span class="o">(</span><span class="n">h</span><span class="o">);</span>
+        <span class="k">return</span> <span class="kc">true</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="k">return</span> <span class="kc">false</span><span class="o">;</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<ul>
+  <li>
+    <p>【3】主要是是对<code class="highlighter-rouge">state</code>做减发操作，默认传过来的<code class="highlighter-rouge">release</code>是1，如果减到<code class="highlighter-rouge">state</code>等于0则会将当前线程的锁释放掉。如果没有减完则继续保存<code class="highlighter-rouge">state</code>状态。</p>
+
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+</pre></td><td class="rouge-code"><pre>  <span class="c1">//ReentrantLock.java</span>
+  <span class="kd">protected</span> <span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">tryRelease</span><span class="o">(</span><span class="kt">int</span> <span class="n">releases</span><span class="o">)</span> <span class="o">{</span>
+      <span class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span class="n">getState</span><span class="o">()</span> <span class="o">-</span> <span class="n">releases</span><span class="o">;</span>
+      <span class="k">if</span> <span class="o">(</span><span class="nc">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">()</span> <span class="o">!=</span> <span class="n">getExclusiveOwnerThread</span><span class="o">())</span>
+          <span class="k">throw</span> <span class="k">new</span> <span class="nf">IllegalMonitorStateException</span><span class="o">();</span>
+      <span class="kt">boolean</span> <span class="n">free</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">c</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">free</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+          <span class="n">setExclusiveOwnerThread</span><span class="o">(</span><span class="kc">null</span><span class="o">);</span>
+      <span class="o">}</span>
+      <span class="n">setState</span><span class="o">(</span><span class="n">c</span><span class="o">);</span>
+      <span class="k">return</span> <span class="n">free</span><span class="o">;</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+  </li>
+  <li>
+    <p>【4-7】在单线程的模式下。head一直是为空的，所以<code class="highlighter-rouge">unparkSuccessor</code>方法是进不去的。后面再分析。</p>
+  </li>
+</ul>
+
+:ET

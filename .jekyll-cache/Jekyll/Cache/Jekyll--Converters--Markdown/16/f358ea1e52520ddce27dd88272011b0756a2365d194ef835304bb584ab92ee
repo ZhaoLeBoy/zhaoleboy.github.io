@@ -1,0 +1,3 @@
+I"<h3 id="概述">概述</h3>
+<p>服务端的channel是通过反射创建出来的，具体这个<code class="highlighter-rouge">NioServerSocketChannel</code>的初始化是在什么时候发生的后面会介绍。先看这个类的无参构造方法。</p>
+:ET

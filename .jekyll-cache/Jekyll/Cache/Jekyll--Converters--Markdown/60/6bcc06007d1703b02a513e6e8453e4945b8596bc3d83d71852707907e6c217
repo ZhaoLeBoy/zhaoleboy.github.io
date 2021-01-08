@@ -1,0 +1,124 @@
+I"l#<p>对Netty中的ChannelHandlerContext的文档大概翻译一下.</p>
+
+<h3 id="概述">概述</h3>
+<p><code class="highlighter-rouge">ChannelHandlerContext</code> 可以让一个<code class="highlighter-rouge">ChannelHandler</code>与它的<code class="highlighter-rouge">ChannelPipeline</code>和其他handler交互。此外一个处理器可以通知<code class="highlighter-rouge">ChannelPipeline</code>中下一个<code class="highlighter-rouge">ChannelHandler</code>并且可以动态修改它所属的<code class="highlighter-rouge">ChannelPipeline</code>对象</p>
+
+<h3 id="通知">通知</h3>
+<p>可以通过调用里面的一些方法通知同一个<code class="highlighter-rouge">ChannelPipeline</code>中最近的handler</p>
+
+<h3 id="修改pipeline">修改pipeline</h3>
+<p>可以调用<code class="highlighter-rouge">pipeline()</code>方法来获取这个handler所属的<code class="highlighter-rouge">ChannelPipeline</code>对象，应用可以在pipeline运行中动态的插入删除替换handler</p>
+
+<h3 id="获取供后续使用">获取供后续使用</h3>
+<p>可以获取一个ChannelHandlerContext供后续使用，例如在handler方法之外，甚至不同的线程中触发一个事件</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+</pre></td><td class="rouge-code"><pre><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyHandler</span> <span class="kd">extends</span> <span class="o">{</span><span class="nd">@link</span> <span class="nc">ChannelDuplexHandler</span><span class="o">}</span> <span class="o">{</span>
+
+<span class="kd">private</span>  <span class="nc">ChannelHandlerContext</span> <span class="n">ctx</span><span class="o">;</span>
+
+<span class="kd">public</span> <span class="kt">void</span> <span class="nf">beforeAdd</span><span class="o">({</span><span class="nd">@link</span> <span class="nc">ChannelHandlerContext</span><span class="o">}</span> <span class="n">ctx</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">this</span><span class="o">.</span><span class="na">ctx</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">;</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="kt">void</span> <span class="nf">login</span><span class="o">(</span><span class="nc">String</span> <span class="n">username</span><span class="o">,</span> <span class="n">password</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="k">new</span> <span class="nc">LoginMessage</span><span class="o">(</span><span class="n">username</span><span class="o">,</span> <span class="n">password</span><span class="o">));</span>
+<span class="o">}</span>
+<span class="o">...</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h3 id="存储状态信息">存储状态信息</h3>
+<p><code class="highlighter-rouge">attr(AttributeKey</code>允许你存储和访问跟handler和它的context有关的状态的信息</p>
+
+<h4 id="一个handler可以拥有多个context">一个handler可以拥有多个context</h4>
+<p>一个ChannelHandler可以多次添加到ChannelPipeline中，这就意味这个一个ChanndlHandler实例可以拥有多个ChannelHandlerContext ，因此一个单例可以在不同的ChannelHaandlerContext被调用，如果它被添加到
+ChannelPipeline中超过一次。
+举个例子。如下的handler会拥有多个独立的AttributeKey，取决于添加到pipeline中次数，不论它是被添加到相同pipeline多次，还是不同pipeline中多次。</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+</pre></td><td class="rouge-code"><pre> <span class="kd">public</span> <span class="kd">class</span> <span class="nc">FactorialHandler</span> <span class="kd">extends</span>  <span class="nc">ChannelInboundHandlerAdapter</span> <span class="o">{</span>
+ 
+    <span class="kd">private</span> <span class="kd">final</span> <span class="nc">AttributeKey</span><span class="o">&lt;</span><span class="nc">Integer</span><span class="o">&gt;;</span> <span class="n">counter</span> <span class="o">=</span> <span class="nc">AttributeKey</span><span class="o">.</span><span class="na">valueOf</span><span class="o">(</span><span class="s">"counter"</span><span class="o">);</span>
+ 
+    <span class="c1">// This handler will receive a sequence of increasing integers starting</span>
+    <span class="c1">// from 1.</span>
+    <span class="nd">@Override</span> 
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">channelRead</span> <span class="o">(</span><span class="nc">ChannelHandlerContext</span>  <span class="n">ctx</span><span class="o">,</span> <span class="nc">Object</span> <span class="n">msg</span><span class="o">)</span> <span class="o">{</span>
+      <span class="nc">Integer</span> <span class="n">a</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="na">attr</span><span class="o">(</span><span class="n">counter</span><span class="o">).</span><span class="na">get</span><span class="o">();</span>
+ 
+      <span class="k">if</span> <span class="o">(</span><span class="n">a</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
+      <span class="o">}</span>
+ 
+      <span class="n">attr</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="n">a</span> <span class="o">*</span> <span class="o">(</span><span class="nc">Integer</span><span class="o">)</span> <span class="n">msg</span><span class="o">);</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+</pre></td><td class="rouge-code"><pre><span class="cm">/*
+*不同的context对象赋值"f1", "f2", "f3", and "f4"，尽管它们是同一个handler实例
+* 因为FactorialHandler在context对象(使用AttributeKey)中存储了自己的状态。
+* 当两个pipeline处于活动状态下，它会被计算四次
+*/</span>
+<span class="nc">ChannelPipeline</span>  <span class="n">p1</span> <span class="o">=</span>   <span class="nc">Channels</span><span class="o">.</span><span class="na">pipeline</span><span class="o">();</span>
+<span class="n">p1</span><span class="o">.</span><span class="na">addLast</span><span class="o">(</span><span class="s">"f1"</span><span class="o">,</span> <span class="n">fh</span><span class="o">);</span>
+<span class="n">p1</span><span class="o">.</span><span class="na">addLast</span><span class="o">(</span><span class="s">"f2"</span><span class="o">,</span> <span class="n">fh</span><span class="o">);</span>
+
+<span class="nc">ChannelPipeline</span>  <span class="n">p2</span> <span class="o">=</span>  <span class="nc">Channels</span><span class="o">.</span><span class="na">pipeline</span><span class="o">();</span>
+<span class="n">p2</span><span class="o">.</span><span class="na">addLast</span><span class="o">(</span><span class="s">"f3"</span><span class="o">,</span> <span class="n">fh</span><span class="o">);</span>
+<span class="n">p2</span><span class="o">.</span><span class="na">addLast</span><span class="o">(</span><span class="s">"f4"</span><span class="o">,</span> <span class="n">fh</span><span class="o">);</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<blockquote>
+  <p>下面是摘自《Netty实战》</p>
+</blockquote>
+
+<p><strong>关系图</strong>
+<img src="/img/netty/extend/channelHandlerContext/1.jpg" alt="IMAGE" /></p>
+
+<p>ChannelHandlerContext 代表了 ChannelHandler 和 ChannelPipeline 之间的关 联，每当有 ChannelHandler 添加到 ChannelPipeline 中时，都会创建 ChannelHandlerContext</p>
+
+<p><strong>事件的流动</strong>
+<img src="/img/netty/extend/channelHandlerContext/2.jpg" alt="IMAGE" /></p>
+
+<p>ChannelHandlerContext 有很多的方法，其中一些方法也存在于 Channel 和 ChannelPipeline 本身上，但是有一点重要的不同。如果调用Channel或者ChannelPipeline 上的这 些方法，它们将沿着整个 ChannelPipeline 进行传播。而调用位于 ChannelHandlerContext 上的相同方法，则将从当前所关联的 ChannelHandler 开始，并且只会传播给位于该 ChannelPipeline 中的下一个能够处理该事件的 ChannelHandler。</p>
+:ET

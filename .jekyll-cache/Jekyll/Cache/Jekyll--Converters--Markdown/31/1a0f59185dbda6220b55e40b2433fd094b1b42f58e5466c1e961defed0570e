@@ -1,0 +1,415 @@
+I"�f<p>参考慕课网<a href="https://coding.imooc.com/class/195.html">并发课程</a>做的笔记</p>
+
+<p>当多个线程访问某个类时候，不管运行时环境采取任何调度方式或者这些进程如何交替执行，并且在主调代码中不需要任何额外的同步或者协同，这个类都能变现出正确行为，那么称这个类就是线程安全的</p>
+
+<ol>
+  <li>原子性：提供了互斥访问，同一时刻只能有一个线程来对他进行操作。</li>
+  <li>可见性：一个线程对主内存的修改可以及时的被其他线程观察到。</li>
+  <li>有序性：一个线程观察其他线程中的指令执行顺序，由于指令重  拍顺序的存在，该观察结果一般杂乱无章。</li>
+</ol>
+
+<h3 id="原子性-atomic包">原子性-Atomic包</h3>
+<p>在<code class="highlighter-rouge">java.util.concurrent.atomic</code>并且<code class="highlighter-rouge">unsafe类提供了硬件级别的原子操作</code></p>
+
+<ul>
+  <li><code class="highlighter-rouge">AtomicInteger.getAndIncrement</code>的源码</li>
+</ul>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+</pre></td><td class="rouge-code"><pre> <span class="cm">/**
+  * 获取底层当前的值并且+1
+  * @param var1 需要操作的AtomicInteger 对象
+  * @param var2 当前的值 
+  * @param var4 要增加的值
+  */</span>
+  <span class="kd">public</span> <span class="kd">final</span> <span class="kt">int</span> <span class="nf">getAndAddInt</span><span class="o">(</span><span class="nc">Object</span> <span class="n">var1</span><span class="o">,</span> <span class="kt">long</span> <span class="n">var2</span><span class="o">,</span> <span class="kt">int</span> <span class="n">var4</span><span class="o">)</span> <span class="o">{</span>
+      <span class="kt">int</span> <span class="n">var5</span><span class="o">;</span>
+      <span class="k">do</span> <span class="o">{</span>
+          <span class="c1">// 获取底层的该对象当前的值</span>
+          <span class="n">var5</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">getIntVolatile</span><span class="o">(</span><span class="n">var1</span><span class="o">,</span> <span class="n">var2</span><span class="o">);</span>
+          <span class="c1">//获取完底层的值和自增操作之间，可能系统的值已经又被其他线程改变了</span>
+          <span class="c1">//如果底层的值var5 等于var2则做var5+var4的操作  </span>
+          <span class="c1">//如果又被改变了，则重新计算系统底层的值，并重新执行本地方法</span>
+      <span class="o">}</span> <span class="k">while</span><span class="o">(!</span><span class="k">this</span><span class="o">.</span><span class="na">compareAndSwapInt</span><span class="o">(</span><span class="n">var1</span><span class="o">,</span> <span class="n">var2</span><span class="o">,</span> <span class="n">var5</span><span class="o">,</span> <span class="n">var5</span> <span class="o">+</span> <span class="n">var4</span><span class="o">));</span> 
+
+      <span class="k">return</span> <span class="n">var5</span><span class="o">;</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<ul>
+  <li>AtomicLong、LongAdder(JDK1.8+)</li>
+</ul>
+
+<p>我们看到AtomicLong在执行CAS操作的时候，是用死循环的方式，如果竞争非常激烈，那么失败量就会很高，性能会受到影响。所以AtomicLong适合低并发</p>
+
+<p>再看一下1.8以后的LongAdder</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="rouge-code"><pre> <span class="kd">public</span> <span class="kt">void</span> <span class="nf">add</span><span class="o">(</span><span class="kt">long</span> <span class="n">x</span><span class="o">)</span> <span class="o">{</span>
+    <span class="nc">Cell</span><span class="o">[]</span> <span class="n">as</span><span class="o">;</span> <span class="kt">long</span> <span class="n">b</span><span class="o">,</span> <span class="n">v</span><span class="o">;</span> <span class="kt">int</span> <span class="n">m</span><span class="o">;</span> <span class="nc">Cell</span> <span class="n">a</span><span class="o">;</span>
+    <span class="k">if</span> <span class="o">((</span><span class="n">as</span> <span class="o">=</span> <span class="n">cells</span><span class="o">)</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">||</span> <span class="o">!</span><span class="n">casBase</span><span class="o">(</span><span class="n">b</span> <span class="o">=</span> <span class="n">base</span><span class="o">,</span> <span class="n">b</span> <span class="o">+</span> <span class="n">x</span><span class="o">))</span> <span class="o">{</span>
+        <span class="kt">boolean</span> <span class="n">uncontended</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">as</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="o">(</span><span class="n">m</span> <span class="o">=</span> <span class="n">as</span><span class="o">.</span><span class="na">length</span> <span class="o">-</span> <span class="mi">1</span><span class="o">)</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">||</span>
+            <span class="o">(</span><span class="n">a</span> <span class="o">=</span> <span class="n">as</span><span class="o">[</span><span class="n">getProbe</span><span class="o">()</span> <span class="o">&amp;</span> <span class="n">m</span><span class="o">])</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span>
+            <span class="o">!(</span><span class="n">uncontended</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="na">cas</span><span class="o">(</span><span class="n">v</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="na">value</span><span class="o">,</span> <span class="n">v</span> <span class="o">+</span> <span class="n">x</span><span class="o">)))</span>
+            <span class="n">longAccumulate</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="n">uncontended</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>jvm对long，double这些64位的变量拆成两个32位的操作</p>
+
+<blockquote>
+  <p>LongAdder的设计思想：核心是将热点数据分离，将内部数据value分成一个数组，每个线程访问时，通过hash等算法映射到其中一个数字进行技术，而最终计数结果为这个数组的求和累加，其中热点数据value会被分离成多个热点单元的数据cell，每个cell独自维护内部的值，当前value的实际值由所有的cell累积合成，从而使热点进行了有效的分离，提高了并行度。</p>
+
+  <ul>
+    <li>优点:LongAdder 在低并发的时候通过直接操作base，可以很好的保证和Atomic的性能基本一致，在高并发的场景，通过热点分区（将单点的跟新压力分散到个各个节点上）来提高并行度。</li>
+    <li>缺点：在统计的时候如果有并发更新，可能会导致结果有些误差，所以需要准确的数值，例如序列号生成还是AtomicLong是好的选择。</li>
+  </ul>
+</blockquote>
+
+<ul>
+  <li>AtomicReference、AtomicReferenceFieldUpdater (不是特别重点)</li>
+</ul>
+
+<p><code class="highlighter-rouge">AtomicReference: 用法同AtomicInteger一样，但是可以放各种对象</code></p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+</pre></td><td class="rouge-code"><pre>	<span class="nd">@ThreadSafe</span>
+	<span class="nd">@Slf4j</span>
+	<span class="kd">public</span> <span class="kd">class</span> <span class="nc">AtomicExample4</span> <span class="o">{</span>
+	    <span class="kd">private</span> <span class="kd">static</span> <span class="nc">AtomicReference</span><span class="o">&lt;</span><span class="nc">Integer</span><span class="o">&gt;</span> <span class="n">count</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">AtomicReference</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
+	
+	    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="nc">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+	        <span class="n">count</span><span class="o">.</span><span class="na">compareAndSet</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="mi">2</span><span class="o">);</span>
+	        <span class="n">count</span><span class="o">.</span><span class="na">compareAndSet</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="mi">1</span><span class="o">);</span>
+	        <span class="n">count</span><span class="o">.</span><span class="na">compareAndSet</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">3</span><span class="o">);</span>
+	        <span class="n">count</span><span class="o">.</span><span class="na">compareAndSet</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">4</span><span class="o">);</span>
+	        <span class="n">count</span><span class="o">.</span><span class="na">compareAndSet</span><span class="o">(</span><span class="mi">3</span><span class="o">,</span> <span class="mi">5</span><span class="o">);</span>
+	        <span class="n">log</span><span class="o">.</span><span class="na">info</span><span class="o">(</span><span class="s">"count {}"</span><span class="o">,</span> <span class="n">count</span><span class="o">.</span><span class="na">get</span><span class="o">());</span>
+	    <span class="o">}</span>
+	<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<ul>
+  <li>AtomicReferenceFieldUpdater</li>
+</ul>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+</pre></td><td class="rouge-code"><pre><span class="nd">@ThreadSafe</span>
+<span class="nd">@Slf4j</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">AtomicExample5</span> <span class="o">{</span>
+
+    <span class="cm">/**
+     * AtomicIntegerFieldUpdater 核心是原子性的去更新某一个类的实例的指定的某一个字段
+     * 构造函数第一个参数为类定义，第二个参数为指定字段的属性名，必须是volatile修饰并且非static的字段
+     */</span>
+    <span class="kd">private</span> <span class="kd">static</span> <span class="nc">AtomicIntegerFieldUpdater</span><span class="o">&lt;</span><span class="nc">AtomicExample5</span><span class="o">&gt;</span> <span class="n">updater</span> <span class="o">=</span>
+            <span class="nc">AtomicIntegerFieldUpdater</span><span class="o">.</span><span class="na">newUpdater</span><span class="o">(</span><span class="nc">AtomicExample5</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="s">"count"</span><span class="o">);</span>
+
+    <span class="nd">@Getter</span>
+    <span class="kd">public</span> <span class="kd">volatile</span> <span class="kt">int</span> <span class="n">count</span> <span class="o">=</span> <span class="mi">100</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="nc">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+
+        <span class="nc">AtomicExample5</span> <span class="n">example5</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">AtomicExample5</span><span class="o">();</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">updater</span><span class="o">.</span><span class="na">compareAndSet</span><span class="o">(</span><span class="n">example5</span><span class="o">,</span> <span class="mi">100</span><span class="o">,</span> <span class="mi">120</span><span class="o">))</span> <span class="o">{</span>
+            <span class="n">log</span><span class="o">.</span><span class="na">info</span><span class="o">(</span><span class="s">"update success1 {}"</span><span class="o">,</span> <span class="n">example5</span><span class="o">.</span><span class="na">getCount</span><span class="o">());</span>
+        <span class="o">}</span>
+
+        <span class="k">if</span> <span class="o">(</span><span class="n">updater</span><span class="o">.</span><span class="na">compareAndSet</span><span class="o">(</span><span class="n">example5</span><span class="o">,</span> <span class="mi">100</span><span class="o">,</span> <span class="mi">120</span><span class="o">))</span> <span class="o">{</span>
+            <span class="n">log</span><span class="o">.</span><span class="na">info</span><span class="o">(</span><span class="s">"update success2 {}"</span><span class="o">,</span> <span class="n">example5</span><span class="o">.</span><span class="na">getCount</span><span class="o">());</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+            <span class="n">log</span><span class="o">.</span><span class="na">info</span><span class="o">(</span><span class="s">"update failed {}"</span><span class="o">,</span> <span class="n">example5</span><span class="o">.</span><span class="na">getCount</span><span class="o">());</span>
+        <span class="o">}</span>
+        <span class="c1">// 1.success 1  2.failed </span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<ul>
+  <li>AtomicStampReference:</li>
+</ul>
+
+<p>ABA问题：在CAS操作的时候，其他线程将变量的值A改成了B由改成了A，本线程使用期望值A与当前变量进行比较的时候，发现A变量没有变，于是CAS就将A值进行了交换操作，这个时候实际上A值已经被其他线程改变过，这与设计思想是不符合的</p>
+
+<p>解决思路：每次变量更新的时候，把变量的版本号加一，这样只要变量被某一个线程修改过，该变量版本号就会发生递增操作，从而解决了ABA变化</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+</pre></td><td class="rouge-code"><pre><span class="cm">/**
+ * Atomically sets the value of both the reference and stamp
+ * to the given update values if the
+ * current reference is {@code ==} to the expected reference
+ * and the current stamp is equal to the expected stamp.
+ *
+ * @param expectedReference the expected value of the reference
+ * @param newReference the new value for the reference
+ * @param expectedStamp the expected value of the stamp(上面提到的版本号)
+ * @param newStamp the new value for the stamp
+ * @return {@code true} if successful
+ */</span>
+<span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">compareAndSet</span><span class="o">(</span><span class="no">V</span>   <span class="n">expectedReference</span><span class="o">,</span>
+                             <span class="no">V</span>   <span class="n">newReference</span><span class="o">,</span>
+                             <span class="kt">int</span> <span class="n">expectedStamp</span><span class="o">,</span>
+                             <span class="kt">int</span> <span class="n">newStamp</span><span class="o">)</span> <span class="o">{</span>
+    <span class="nc">Pair</span><span class="o">&lt;</span><span class="no">V</span><span class="o">&gt;</span> <span class="n">current</span> <span class="o">=</span> <span class="n">pair</span><span class="o">;</span>
+    <span class="k">return</span>
+        <span class="n">expectedReference</span> <span class="o">==</span> <span class="n">current</span><span class="o">.</span><span class="na">reference</span> <span class="o">&amp;&amp;</span>
+        <span class="n">expectedStamp</span> <span class="o">==</span> <span class="n">current</span><span class="o">.</span><span class="na">stamp</span> <span class="o">&amp;&amp;</span>
+        <span class="o">((</span><span class="n">newReference</span> <span class="o">==</span> <span class="n">current</span><span class="o">.</span><span class="na">reference</span> <span class="o">&amp;&amp;</span>
+          <span class="n">newStamp</span> <span class="o">==</span> <span class="n">current</span><span class="o">.</span><span class="na">stamp</span><span class="o">)</span> <span class="o">||</span>
+         <span class="n">casPair</span><span class="o">(</span><span class="n">current</span><span class="o">,</span> <span class="nc">Pair</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="n">newReference</span><span class="o">,</span> <span class="n">newStamp</span><span class="o">)));</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<ul>
+  <li>
+    <p>AtomicLongArray
+可以指定更新一个数组指定索引位置的值.具体见源码</p>
+  </li>
+  <li>
+    <p>AtomicBoolean(平时用的比较多)
+compareAndSet方法也值得注意，可以达到同一时间只有一个线程执行这段代码</p>
+  </li>
+</ul>
+
+<h3 id="原子性-锁">原子性-锁</h3>
+
+<ol>
+  <li>synchronized：依赖JVM （主要依赖JVM实现锁，因此在这个关键字作用对象的作用范围内，都是同一时刻只能有一个线程进行操作的）</li>
+  <li>Lock：依赖特殊的CPU指令，代码实现，ReentrantLock</li>
+</ol>
+
+<blockquote>
+  <p>synchronized:当两个并发线程(thread1和thread2)访问同一个对象(syncThread)中的synchronized代码块时，在同一时刻只能有一个线程得到执行，另一个线程受阻塞，必须等待当前线程执行完这个代码块以后才能执行该代码块。Thread1和thread2是互斥的，因为在执行synchronized代码块时会锁定当前的对象，只有执行完该代码块才能释放该对象锁，下一个线程才能执行并锁定该对象。但是也要这主意每个对象只有一个锁（lock）如果声明多个对象则每个对象互不干扰</p>
+</blockquote>
+
+<h3 id="原子性-对比">原子性-对比</h3>
+<ol>
+  <li>synchronize：不可中断，适合竞争不激烈，可读性好。</li>
+  <li>lock：可中断锁，多样化同步，竞争激烈时能维持常态。</li>
+  <li>atomic：竞争激烈时能维持常态，比lock性能好，但只能同步一个值。</li>
+</ol>
+
+<h3 id="可见性">可见性</h3>
+<p>一个线程对主线程的修改可以及时的被其他线程观察到</p>
+
+<p>导致共享变量在线程中不可见的原因:</p>
+
+<ol>
+  <li>线程交叉执行。</li>
+  <li>重排序结合线程交叉执行。</li>
+  <li>共享变量更新后的值没有在工作内存与主内存间及时更新。</li>
+</ol>
+
+<p><strong>java提供了synchronized和volatile 两种方法来确保可见性</strong></p>
+
+<p>JMM（java内存模型）关于synchronized的两条规定:</p>
+
+<ol>
+  <li>线程解锁前，必须把共享变量的最新值刷新到主内存。</li>
+  <li>线程加锁时，将清空工作内存中共享变量的值，从而使用共享变量时需要从主内存中重新读取最新的值（注意，加锁和解锁是同一把锁）。</li>
+</ol>
+
+<p>. volatile：通过加入<code class="highlighter-rouge">内存屏障</code>和<code class="highlighter-rouge">禁止重排序优化</code>来实现</p>
+
+<p><img src="/img/concurrent-safe/E26ACBF78BA571DBACD9D068E8C29C62.png" alt="volatile写" />
+<img src="/img/concurrent-safe/A86445F75489714B2C7B81205E244183.png" alt="volatile读" /></p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+</pre></td><td class="rouge-code"><pre><span class="nd">@Slf4j</span>
+<span class="nd">@NotThreadSafe</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">CountExample4</span> <span class="kd">extends</span> <span class="nc">AbstractExample</span><span class="o">{</span>
+
+    <span class="cm">/** 请求总数 */</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">int</span> <span class="n">clientTotal</span> <span class="o">=</span> <span class="mi">5000</span><span class="o">;</span>
+    <span class="cm">/** 同时并发执行的线程数 */</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">int</span> <span class="n">threadTotal</span> <span class="o">=</span> <span class="mi">50</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="kd">volatile</span> <span class="kd">static</span> <span class="kt">int</span> <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+
+    <span class="cm">/**
+     * 本质上应该是这个方法线程不安全
+     *
+     * volatile只能保证 1，2，3的顺序不会被重排序
+     * 但是不保证1，2，3的原子执行，也就是说还是有可能有两个线程交叉执行1，导致结果不一致
+     */</span>
+    <span class="nd">@Override</span>
+    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">add</span><span class="o">()</span> <span class="o">{</span>
+        <span class="c1">// 1.取内存中的count值</span>
+        <span class="c1">// 2.count值加1</span>
+        <span class="c1">// 3.重新写会主存</span>
+        <span class="n">count</span><span class="o">++;</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">countLog</span><span class="o">()</span> <span class="o">{</span>
+        <span class="n">log</span><span class="o">.</span><span class="na">info</span><span class="o">(</span><span class="s">"count:{}"</span><span class="o">,</span><span class="n">count</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="nc">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">InterruptedException</span> <span class="o">{</span>
+        <span class="k">new</span> <span class="nf">CountExample4</span><span class="o">().</span><span class="na">add</span><span class="o">();</span>
+    <span class="o">}</span>
+
+<span class="o">}</span>
+
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>volatile使用条件</p>
+
+<ol>
+  <li>对变量写操作不依赖于当前值</li>
+  <li>该变量没有包含在具有其他变量的不必要的式子中</li>
+</ol>
+
+<p>综上，volatile特别适合用来做线程标记量，如下图
+<img src="/img/concurrent-safe/71125601C21FCC2F2C132150AD07CB86.png" alt="volatile" /></p>
+
+<h3 id="有序性">有序性</h3>
+<p>java 内存模型中，允许编译器和处理器对指令进行重排序，但是重排序过程不会影响到单线程程序的执行，却会影响到多线程的并发执行的正确性</p>
+
+<ul>
+  <li>happens-before原则
+    <ol>
+      <li>程序次序规则：一个线程内，按照代码顺序，书写在前面的操作先行发生于书写在后面的操作。</li>
+      <li>锁定规则:一个unLock操作先行发生于后面对同一个锁的lock操作。</li>
+      <li>volatile变量规则：对一个变量的写操作先行发生于后面对这个变量的读操作。</li>
+      <li>传递规则：如果操作A先行发生于操作B，而操作B又先行发生于操作C 则可以得出操作A先行发生于操作C</li>
+      <li>线程启动原则：Thread对象的start方法先行发生于此线程的每一个动作</li>
+      <li>线程中断规则：对线程interrupt方法的调用先行发生于被中断线程的代码检测到中断事件的发生</li>
+      <li>线程终结规则：线程中所有操作都先行发生于线程的终止检测，可以通过Thread.join方法结束，Thread.isAlive的返回值检测到线程已经终止执行。</li>
+      <li>对象终结规则:一个对象的初始化完成先行发生于它的finalize方法的开始</li>
+    </ol>
+  </li>
+</ul>
+
+<p><code class="highlighter-rouge">第一条规则要注意理解，这里只是程序的运行结果看起来像是顺序执行，虽然结果是一样的，jvm会对没有变量值依赖的操作进行重排序，这个规则只能保证单线程下执行的有序性，不能保证多线程下的有序性</code></p>
+
+<p>Happens-before原则，先天有序性，即不需要任何额外的代码控制即可保证有序性,如果两个操作的次序不能从这八种规则中推倒出来，则不能保证有序性。</p>
+
+:ET

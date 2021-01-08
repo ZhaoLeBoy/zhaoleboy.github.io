@@ -1,0 +1,193 @@
+I"s><h3 id="关系图">关系图</h3>
+<p>先上NioEventLoopGroup的继承关系图，有删减
+<img src="/img/netty/1-1/1.jpg" alt="IMAGE" /></p>
+
+<p>一般来说Netty在启动的时候，会实例化两个NioEventLoopGroup，一个是boss，一个是worker,
+boss是用来接受新的链接，worker是用来处理新链接的网络读写，具体初始化的类方法是在<code class="highlighter-rouge">MultithreadEventExecutorGroup</code>中进行的。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre><span class="c1">//实例化参数是线程数，不传的化默认是cpu核数*2</span>
+<span class="nc">EventLoopGroup</span> <span class="n">bossGroup</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">NioEventLoopGroup</span><span class="o">(</span><span class="mi">1</span><span class="o">);</span>
+<span class="nc">EventLoopGroup</span> <span class="n">workGroup</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">NioEventLoopGroup</span><span class="o">();</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<blockquote>
+  <p>EventLoopGroup是一个接口，用途是在事件循环中（例如等待连接，等待输入输出流等的一个死循环），在进行selection操作中允许注册Channel。
+ NioEventLoopGroup是EventLoopGroup的一个实现类，MultithreadEventLoopGroup的实现，是基于Channel的Nio选择器(Selector)。</p>
+</blockquote>
+
+<h3 id="概述">概述</h3>
+<p>NioEventLoopGroup初始化 做了三件事</p>
+<ol>
+  <li>构造线程执行器<code class="highlighter-rouge">ThreadPerTaskExecutor</code></li>
+  <li>根据线程数和线程创建器<code class="highlighter-rouge">ThreadPerTaskExecutor</code>构造多个事件执行器<code class="highlighter-rouge">EventExecutor</code>数组。</li>
+  <li>创建线程事件执行器的选择器chooser，类型是<code class="highlighter-rouge">EventExecutorChooserFactory.EventExecutorChooser</code></li>
+</ol>
+
+<h3 id="1构造线程执行器threadpertaskexecutor">1.构造线程执行器<code class="highlighter-rouge">ThreadPerTaskExecutor</code></h3>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class="rouge-code"><pre><span class="c1">//MultithreadEventLoopGroup.java</span>
+ <span class="n">executor</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ThreadPerTaskExecutor</span><span class="o">(</span><span class="n">newDefaultThreadFactory</span><span class="o">());</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p><code class="highlighter-rouge">newDefaultThreadFactory()</code>自定义一个线程工厂。具体见<a href="http://jinlipool.com/2019/01/27/netty-1-1-1-ThreadPerTaskExecutor/">【1-1-1.Netty源码:线程执行器ThreadPerTaskExecutor】</a></p>
+
+<h3 id="2创建事件执行器eventexecutor">2.创建事件执行器<code class="highlighter-rouge">EventExecutor</code></h3>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class="rouge-code"><pre><span class="c1">//  具体实现是在`NioEventLoop`中实现</span>
+<span class="n">children</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">newChild</span><span class="o">(</span><span class="n">executor</span><span class="o">,</span> <span class="n">args</span><span class="o">);</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>创建了新的事件执行器，调用next()方法进行访问，是可以在MultithreadEventExecutorGroup中每个线程调用此方法</p>
+
+<p>NioEventLoop继承关系如下，有删减
+<img src="/img/netty/1-1/2.jpg" alt="IMAGE" /></p>
+
+<p>初始化中继承关系如上图右侧</p>
+<blockquote>
+  <p>NioEventLoop-&gt;SingleThreadEventLoop-&gt;SingleThreadExecutor-&gt;AbstractScheduledEventExecutor-&gt;AbstractEventExecutor
+最重要的几个方法就是在<code class="highlighter-rouge">NioEventLoop</code>和<code class="highlighter-rouge">SingleThreadExecutor</code>这三个类中</p>
+</blockquote>
+
+<ul>
+  <li>
+    <p>NioEventLoop</p>
+
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+</pre></td><td class="rouge-code"><pre>  <span class="nc">NioEventLoop</span><span class="o">(</span><span class="nc">NioEventLoopGroup</span> <span class="n">parent</span><span class="o">,</span> <span class="nc">Executor</span> <span class="n">executor</span><span class="o">,</span> <span class="nc">SelectorProvider</span> <span class="n">selectorProvider</span><span class="o">,</span>
+               <span class="nc">SelectStrategy</span> <span class="n">strategy</span><span class="o">,</span> <span class="nc">RejectedExecutionHandler</span> <span class="n">rejectedExecutionHandler</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">//继承链。。。</span>
+    <span class="kd">super</span><span class="o">(</span><span class="n">parent</span><span class="o">,</span> <span class="n">executor</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="no">DEFAULT_MAX_PENDING_TASKS</span><span class="o">,</span> <span class="n">rejectedExecutionHandler</span><span class="o">);</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">selectorProvider</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="nf">NullPointerException</span><span class="o">(</span><span class="s">"selectorProvider"</span><span class="o">);</span>
+    <span class="o">}</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">strategy</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="nf">NullPointerException</span><span class="o">(</span><span class="s">"selectStrategy"</span><span class="o">);</span>
+    <span class="o">}</span>
+    <span class="n">provider</span> <span class="o">=</span> <span class="n">selectorProvider</span><span class="o">;</span>
+    <span class="c1">//TODO:优化</span>
+    <span class="kd">final</span> <span class="nc">SelectorTuple</span> <span class="n">selectorTuple</span> <span class="o">=</span> <span class="n">openSelector</span><span class="o">();</span>
+    <span class="c1">//TODO:创建selector</span>
+    <span class="n">selector</span> <span class="o">=</span> <span class="n">selectorTuple</span><span class="o">.</span><span class="na">selector</span><span class="o">;</span> <span class="c1">//创建selector</span>
+    <span class="n">unwrappedSelector</span> <span class="o">=</span> <span class="n">selectorTuple</span><span class="o">.</span><span class="na">unwrappedSelector</span><span class="o">;</span>
+    <span class="n">selectStrategy</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">;</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+
+    <ul>
+      <li>
+        <p>【11】 这个<code class="highlighter-rouge">selectorProvider</code>是在<code class="highlighter-rouge">NioEventLoopGroup</code>初始化中由SelectorProvider.provider() （一个静态方法 用于提高效率）。</p>
+      </li>
+      <li>
+        <p>【12】优化selector的创建</p>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <p>SingleThreadExecutor</p>
+
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+</pre></td><td class="rouge-code"><pre><span class="kd">protected</span> <span class="nf">SingleThreadEventExecutor</span><span class="o">(</span><span class="nc">EventExecutorGroup</span> <span class="n">parent</span><span class="o">,</span> <span class="nc">Executor</span> <span class="n">executor</span><span class="o">,</span>
+                                  <span class="kt">boolean</span> <span class="n">addTaskWakesUp</span><span class="o">,</span> <span class="kt">int</span> <span class="n">maxPendingTasks</span><span class="o">,</span>
+                                  <span class="nc">RejectedExecutionHandler</span> <span class="n">rejectedHandler</span><span class="o">)</span> <span class="o">{</span>
+  <span class="kd">super</span><span class="o">(</span><span class="n">parent</span><span class="o">);</span>
+  <span class="k">this</span><span class="o">.</span><span class="na">addTaskWakesUp</span> <span class="o">=</span> <span class="n">addTaskWakesUp</span><span class="o">;</span>
+  <span class="k">this</span><span class="o">.</span><span class="na">maxPendingTasks</span> <span class="o">=</span> <span class="nc">Math</span><span class="o">.</span><span class="na">max</span><span class="o">(</span><span class="mi">16</span><span class="o">,</span> <span class="n">maxPendingTasks</span><span class="o">);</span>
+  <span class="k">this</span><span class="o">.</span><span class="na">executor</span> <span class="o">=</span> <span class="nc">ObjectUtil</span><span class="o">.</span><span class="na">checkNotNull</span><span class="o">(</span><span class="n">executor</span><span class="o">,</span> <span class="s">"executor"</span><span class="o">);</span>
+  <span class="n">taskQueue</span> <span class="o">=</span> <span class="n">newTaskQueue</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">maxPendingTasks</span><span class="o">);</span>
+  <span class="c1">//拒绝策略</span>
+  <span class="n">rejectedExecutionHandler</span> <span class="o">=</span> <span class="nc">ObjectUtil</span><span class="o">.</span><span class="na">checkNotNull</span><span class="o">(</span><span class="n">rejectedHandler</span><span class="o">,</span> <span class="s">"rejectedHandler"</span><span class="o">);</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+    <ul>
+      <li>【8】内部是一个LinkedBlockingQueue队列，LinkedBlockingQueue实现的队列中的锁是分离的，其添加采用的是putLock，移除采用的则是takeLock，这样能大大提高队列的吞吐量，也意味着在高并发的情况下生产者和消费者可以并行地操作队列中的数据，以此来提高整个队列的并发性能。。</li>
+    </ul>
+  </li>
+</ul>
+
+<h3 id="3创建线程事件执行器的选择器chooser">3.创建线程事件执行器的选择器chooser</h3>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="n">chooser</span> <span class="o">=</span> <span class="n">chooserFactory</span><span class="o">.</span><span class="na">newChooser</span><span class="o">(</span><span class="n">children</span><span class="o">);</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>线程选择器创建好的NioEventLoop进行选择，给新来的连接绑定NioEventLoop，循环绑定,此处的选择方式netty进行了优化</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="rouge-code"><pre><span class="kd">public</span> <span class="nc">EventExecutorChooser</span> <span class="nf">newChooser</span><span class="o">(</span><span class="nc">EventExecutor</span><span class="o">[]</span> <span class="n">executors</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">isPowerOfTwo</span><span class="o">(</span><span class="n">executors</span><span class="o">.</span><span class="na">length</span><span class="o">))</span> <span class="o">{</span><span class="c1">//长度是否是2的幂</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">PowerOfTwoEventExecutorChooser</span><span class="o">(</span><span class="n">executors</span><span class="o">);</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">GenericEventExecutorChooser</span><span class="o">(</span><span class="n">executors</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class="rouge-code"><pre><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">PowerOfTwoEventExecutorChooser</span> <span class="kd">implements</span> <span class="nc">EventExecutorChooser</span> <span class="o">{</span>
+    <span class="o">...</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="nc">EventExecutor</span> <span class="nf">next</span><span class="o">()</span> <span class="o">{</span>
+        <span class="c1">//  二进制与运算。效率更高</span>
+        <span class="k">return</span> <span class="n">executors</span><span class="o">[</span><span class="n">idx</span><span class="o">.</span><span class="na">getAndIncrement</span><span class="o">()</span> <span class="o">&amp;</span> <span class="n">executors</span><span class="o">.</span><span class="na">length</span> <span class="o">-</span> <span class="mi">1</span><span class="o">];</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class="rouge-code"><pre><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">GenericEventExecutorChooser</span> <span class="kd">implements</span> <span class="nc">EventExecutorChooser</span> <span class="o">{</span>
+    <span class="o">...</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="nc">EventExecutor</span> <span class="nf">next</span><span class="o">()</span> <span class="o">{</span>
+       <span class="c1">//基数取模运算，</span>
+        <span class="k">return</span> <span class="n">executors</span><span class="o">[</span><span class="nc">Math</span><span class="o">.</span><span class="na">abs</span><span class="o">(</span><span class="n">idx</span><span class="o">.</span><span class="na">getAndIncrement</span><span class="o">()</span> <span class="o">%</span> <span class="n">executors</span><span class="o">.</span><span class="na">length</span><span class="o">)];</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+:ET

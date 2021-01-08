@@ -1,0 +1,62 @@
+I"�<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+</pre></td><td class="rouge-code"><pre><span class="c1">//NioEventLoop</span>
+<span class="nd">@Override</span>
+<span class="kd">protected</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+  <span class="k">for</span> <span class="o">(;</span> <span class="o">;</span> <span class="o">)</span> <span class="o">{</span>
+    <span class="k">try</span> <span class="o">{</span>
+      <span class="o">...</span><span class="na">select</span><span class="err">部分</span><span class="o">...</span> 
+        <span class="kd">final</span> <span class="kt">int</span> <span class="n">ioRatio</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">ioRatio</span><span class="o">;</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">ioRatio</span> <span class="o">==</span> <span class="mi">100</span><span class="o">)</span> <span class="o">{</span>
+          <span class="k">try</span> <span class="o">{</span>
+              <span class="n">processSelectedKeys</span><span class="o">();</span><span class="c1">//处理io相关逻辑</span>
+          <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+              <span class="c1">// Ensure we always run tasks.</span>
+              <span class="n">runAllTasks</span><span class="o">();</span><span class="c1">//处理外部线程进入队列的任务</span>
+          <span class="o">}</span>
+      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+          <span class="kd">final</span> <span class="kt">long</span> <span class="n">ioStartTime</span> <span class="o">=</span> <span class="nc">System</span><span class="o">.</span><span class="na">nanoTime</span><span class="o">();</span>
+          <span class="k">try</span> <span class="o">{</span>
+              <span class="n">processSelectedKeys</span><span class="o">();</span>
+          <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+              <span class="c1">// Ensure we always run tasks.</span>
+              <span class="kd">final</span> <span class="kt">long</span> <span class="n">ioTime</span> <span class="o">=</span> <span class="nc">System</span><span class="o">.</span><span class="na">nanoTime</span><span class="o">()</span> <span class="o">-</span> <span class="n">ioStartTime</span><span class="o">;</span>
+              <span class="n">runAllTasks</span><span class="o">(</span><span class="n">ioTime</span> <span class="o">*</span> <span class="o">(</span><span class="mi">100</span> <span class="o">-</span> <span class="n">ioRatio</span><span class="o">)</span> <span class="o">/</span> <span class="n">ioRatio</span><span class="o">);</span>
+          <span class="o">}</span>
+      <span class="o">}</span> 
+    <span class="o">}</span> 
+   <span class="o">...</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<ul>
+  <li>【8】见<a href="http://jinlipool.com/2019/01/30/netty-3-2-evetloop-event-detection/">【3-2.Netty源码:NioEventLoop循环检测事件】</a></li>
+  <li>【9】 processSelectedKeys此处是处理相关io连接问题</li>
+</ul>
+:ET

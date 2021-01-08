@@ -1,0 +1,123 @@
+I"�%<p>之前写过两篇文章,是关于ReentrantLock。</p>
+<ul>
+  <li><a href="http://jinlipool.com/2019/06/24/reetrantlock_1/">1.ReetrantLock:单线程下的加锁过程</a></li>
+  <li><a href="http://jinlipool.com/2019/06/24/reetrantlock_2/">2.ReetrantLock:多线程下的加锁过程</a></li>
+</ul>
+
+<p>总感觉还差点什么，放了许久后，再次进入源码中学习，这次又有更深的理解,准备换个角度从纯流程开始描述。</p>
+
+<h5 id="概念">概念</h5>
+
+<p>AQS 全称是 AbstractQueuedSynchronizer，顾名思义，是一个用来构建锁和同步器的框架，它底层用了 CAS 技术来保证操作的原子性，同时利用 FIFO 队列实现线程间的锁竞争，将基础的同步相关抽象细节放在 AQS，这也是 ReentrantLock、CountDownLatch 等同步工具实现同步的底层实现机制。它能够成为实现大部分同步需求的基础，也是 J.U.C 并发包同步的核心基础组件。</p>
+
+<h5 id="加锁过程描述">加锁过程描述</h5>
+<p>先大概用文字描述下加锁的过程，建立个大概的印象，然后会跟着代码详细解释。</p>
+
+<p>Reentrant实现的锁默认是非公平的，具体是在<code class="highlighter-rouge">NonfairSync</code>中实现，lock加的是独占锁(互斥锁)。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="rouge-code"><pre><span class="c1">//NonfairSync#lock</span>
+<span class="kd">final</span> <span class="kt">void</span> <span class="nf">lock</span><span class="o">()</span> <span class="o">{</span>
+<span class="k">if</span> 
+    <span class="nf">setExclusiveOwnerThread</span><span class="o">(</span><span class="nc">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">());</span>
+<span class="k">else</span>
+    <span class="nf">acquire</span><span class="o">(</span><span class="mi">1</span><span class="o">);</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>首先会去判断同步锁状态(state)，如果这个同步锁没有被占用，则当前的线程(这里称为threadB)可以直接持有。如果被threadA持有了，threadB会进入下一步尝试去获取锁。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class="rouge-code"><pre><span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">acquire</span><span class="o">(</span><span class="kt">int</span> <span class="n">arg</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(!</span><span class="n">tryAcquire</span><span class="o">(</span><span class="n">arg</span><span class="o">)</span> <span class="o">&amp;&amp;</span>
+        <span class="n">acquireQueued</span><span class="o">(</span><span class="n">addWaiter</span><span class="o">(</span><span class="nc">Node</span><span class="o">.</span><span class="na">EXCLUSIVE</span><span class="o">),</span> <span class="n">arg</span><span class="o">))</span>
+        <span class="n">selfInterrupt</span><span class="o">();</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>获取锁的方式有两种，一种是根据threadB的情况来判断，还有一种是从CLH链表中获取。如果threadB获取锁失败但是从CLH链表中获取到锁了，则需要将threadB标记中断。//TODO………</p>
+
+<ul>
+  <li>
+    <p>tryAcquire(arg)中干的事是，判断同步锁状态，如果这个时候同步锁没有被持有，可以直接让threadB直接持有。如果threadB 跟已经持有锁的threadA是同一个线程，直接计数器+1(可重入)，如果上述的条件都不满足返回false。</p>
+  </li>
+  <li>
+    <p>acquireQueued(addWaiter(Node.EXCLUSIVE), arg)两个方法组成。</p>
+    <ul>
+      <li><code class="highlighter-rouge">addWaiter</code>用来将threadB封装成Node(以下称为NodeB)，并将它装载到CLH双向链的尾部</li>
+      <li>
+        <p><code class="highlighter-rouge">acquireQueued</code>不间断的尝试从chl队列中获取独占锁。</p>
+
+        <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="rouge-code"><pre>  <span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">acquireQueued</span><span class="o">(</span><span class="kd">final</span> <span class="nc">Node</span> <span class="n">node</span><span class="o">,</span> <span class="kt">int</span> <span class="n">arg</span><span class="o">)</span> <span class="o">{</span>
+     <span class="o">...</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">p</span> <span class="o">==</span> <span class="n">head</span> <span class="o">&amp;&amp;</span> <span class="n">tryAcquire</span><span class="o">(</span><span class="n">arg</span><span class="o">))</span> <span class="o">{</span>
+          <span class="n">setHead</span><span class="o">(</span><span class="n">node</span><span class="o">);</span>
+          <span class="n">p</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span> <span class="c1">// help GC</span>
+          <span class="n">failed</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+          <span class="k">return</span> <span class="n">interrupted</span><span class="o">;</span>
+      <span class="o">}</span>
+      <span class="o">...</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>        </div>
+
+        <ol>
+          <li>如果threadB的<code class="highlighter-rouge">前一个节点</code>（以下称为NodeA）是head节点，并且再次尝试获取锁（tryAcquire(arg)）成功了(说明NodeA节点的threadA已经执行完，释放锁了)，则把threadB设置为head节点（由此可见，CHL链表中的头结点是持有锁的那个线程）并且返回true</li>
+        </ol>
+
+        <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+</pre></td><td class="rouge-code"><pre>  <span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">acquireQueued</span><span class="o">(</span><span class="kd">final</span> <span class="nc">Node</span> <span class="n">node</span><span class="o">,</span> <span class="kt">int</span> <span class="n">arg</span><span class="o">){</span>
+      <span class="o">...</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">shouldParkAfterFailedAcquire</span><span class="o">(</span><span class="n">p</span><span class="o">,</span> <span class="n">node</span><span class="o">)</span> <span class="o">&amp;&amp;</span>
+              <span class="n">parkAndCheckInterrupt</span><span class="o">())</span>
+         <span class="n">interrupted</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+
+      <span class="k">finally</span> <span class="o">{</span>
+          <span class="k">if</span> <span class="o">(</span><span class="n">failed</span><span class="o">)</span>
+              <span class="n">cancelAcquire</span><span class="o">(</span><span class="n">node</span><span class="o">);</span>
+      <span class="o">}</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>        </div>
+
+        <ol>
+          <li>在上述尝试获取锁失败后会检测是否挂起threadB。
+            <ul>
+              <li><code class="highlighter-rouge">shouldParkAfterFailedAcquire</code>根据NodeA节点(注意是NodeB的前一个节点)的<code class="highlighter-rouge">waitStatus</code> 对节点进行处理，如果标记为<code class="highlighter-rouge">SIGNAL</code>说明NodeA处于持有锁的状态，返回true，说明NodeA中的线程正在持有锁，threadB可以被挂起。如果是<code class="highlighter-rouge">CANCELLED</code>则删除这个节点。如果是<code class="highlighter-rouge">0</code>或者<code class="highlighter-rouge">PROPAGATE</code>则将其设置为为<code class="highlighter-rouge">SIGNAL</code>。但此时返回的是false，threadB可以不被挂起，原因是只是刚改了NodeA的状态，但不确定NodeA中线程能不能获取到锁(多线程竞争锁的时候容易出现这种事情)，需要再次循环重试。</li>
+              <li><code class="highlighter-rouge">parkAndCheckInterrupt</code> 先挂起当前线程,返回该线程是否中断的状态。如果false说明threadB没有中断。否则标记下interrupted=true,最后回到<code class="highlighter-rouge">acquire()</code>方法中，由于threadB是中断状态，所以调用<code class="highlighter-rouge">selfInterrupt()</code>中断threadB。其实中断问题也不大，因为后面会再唤醒的。</li>
+              <li>对出了异常的节点。会将节点标记为<code class="highlighter-rouge">CANCEL</code>，在下一次循环的<code class="highlighter-rouge">shouldParkAfterFailedAcquire</code>方法中剔除。</li>
+            </ul>
+          </li>
+        </ol>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+:ET

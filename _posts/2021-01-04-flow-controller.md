@@ -23,24 +23,24 @@ TCP为它应用程序提供了`流量控制服务`，TCP连接的收发数据量
 
 **接收方**
 
-![1](/img/tcp/flow-controller/1.png)
+![1](/img/tcp/flow_controller/1.png)
 
 * `接受窗口`的大小就是反馈给发送方`提供窗口`的大小。
 * 小于左边界和大于右边界的数据均被丢弃。只有当接受数据序列号等于左边界的时候，数据才会被存储并且窗口右移。
 
 **发送方**
 
-![2](/img/tcp/flow-controller/2.png)
+![2](/img/tcp/flow_controller/2.png)
 
 * 提供窗口的大小是由接收端返回ACK中窗口大小(window size)提供的。
 * 窗口和左边界是无法左移的。窗口的右边界无法向左收缩.（RFC1122中不支持）
 
 ### 什么是零窗口
 
-![3](/img/tcp/flow-controller/3.png)
+![3](/img/tcp/flow_controller/3.png)
 存在于TCP报头中，TCP是通过接收端通告来实现流量控制的，当窗口值为零，则可以有效的阻止发送端继续发送数据。直到接收端重新获得空间。
 
-![4](/img/tcp/flow-controller/4.png)
+![4](/img/tcp/flow_controller/4.png)
 							[图片来源](http://www.tcpipguide.com/free/t_TCPWindowSizeAdjustmentandFlowControl-2.htm)
 
 由于window size 是接收端反馈而来，当零窗口的情况下接收端并不直到什么时候能恢复，所以当接收端又有了可用空间，会给发送端传输一个窗口更新。

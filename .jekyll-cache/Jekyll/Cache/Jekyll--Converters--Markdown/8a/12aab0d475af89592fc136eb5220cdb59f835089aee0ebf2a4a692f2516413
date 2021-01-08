@@ -1,0 +1,10 @@
+I"=<p>首先自定义三个inbound处理器
+```java
+//InBoundA
+public class InBoundA extends ChannelInboundHandlerAdapter {
+    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        System.out.println(“In Bound A” + msg);
+        ctx.fireChannelRead(msg);
+    }</p>
+:ET

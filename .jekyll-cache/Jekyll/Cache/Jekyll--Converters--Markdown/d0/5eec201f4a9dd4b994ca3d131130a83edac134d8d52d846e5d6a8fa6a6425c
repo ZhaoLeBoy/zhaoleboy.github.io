@@ -1,0 +1,41 @@
+I"�<p>```java
+ //NioEventLoop.java
+//重新构造个selector
+private void rebuildSelector0() {
+  final Selector oldSelector = selector;
+  final SelectorTuple newSelectorTuple;
+  …
+  try {
+    newSelectorTuple = openSelector();
+  }
+  …</p>
+
+<p>//获取这个selector上所有注册的channelkey
+  for (SelectionKey key : oldSelector.keys()) {
+    Object a = key.attachment();
+    try {
+        if (!key.isValid() || key.channel().keyFor(newSelectorTuple.unwrappedSelector) != null) {
+            continue;
+        }
+        //这个select上所有感兴趣事件
+        int interestOps = key.interestOps();
+        key.cancel();</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class="rouge-code"><pre>    SelectionKey newKey = key.channel().register(newSelectorTuple.unwrappedSelector, interestOps, a);
+    if (a instanceof AbstractNioChannel) {
+        ((AbstractNioChannel) a).selectionKey = newKey;
+    }
+    nChannels++;
+} catch (Exception e) {
+    ...
+}   }
+</pre></td></tr></tbody></table></code></pre></div></div>
+:ET

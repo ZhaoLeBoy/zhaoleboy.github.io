@@ -1,0 +1,149 @@
+I"�2<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+</pre></td><td class="rouge-code"><pre><span class="kd">private</span> <span class="no">S</span> <span class="nf">getRequestedSession</span><span class="o">()</span> <span class="o">{</span>
+	<span class="k">if</span> <span class="o">(!</span><span class="k">this</span><span class="o">.</span><span class="na">requestedSessionCached</span><span class="o">)</span> <span class="o">{</span>
+		<span class="nc">List</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;</span> <span class="n">sessionIds</span> <span class="o">=</span> <span class="nc">SessionRepositoryFilter</span><span class="o">.</span><span class="na">this</span><span class="o">.</span><span class="na">httpSessionIdResolver</span>
+				<span class="o">.</span><span class="na">resolveSessionIds</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+		<span class="k">for</span> <span class="o">(</span><span class="nc">String</span> <span class="n">sessionId</span> <span class="o">:</span> <span class="n">sessionIds</span><span class="o">)</span> <span class="o">{</span>
+			<span class="k">if</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">requestedSessionId</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+				<span class="k">this</span><span class="o">.</span><span class="na">requestedSessionId</span> <span class="o">=</span> <span class="n">sessionId</span><span class="o">;</span>
+			<span class="o">}</span>
+			<span class="no">S</span> <span class="n">session</span> <span class="o">=</span> <span class="nc">SessionRepositoryFilter</span><span class="o">.</span><span class="na">this</span><span class="o">.</span><span class="na">sessionRepository</span><span class="o">.</span><span class="na">findById</span><span class="o">(</span><span class="n">sessionId</span><span class="o">);</span>
+			<span class="k">if</span> <span class="o">(</span><span class="n">session</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+				<span class="k">this</span><span class="o">.</span><span class="na">requestedSession</span> <span class="o">=</span> <span class="n">session</span><span class="o">;</span>
+				<span class="k">this</span><span class="o">.</span><span class="na">requestedSessionId</span> <span class="o">=</span> <span class="n">sessionId</span><span class="o">;</span>
+				<span class="k">break</span><span class="o">;</span>
+			<span class="o">}</span>
+		<span class="o">}</span>
+		<span class="k">this</span><span class="o">.</span><span class="na">requestedSessionCached</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+	<span class="o">}</span>
+	<span class="k">return</span> <span class="k">this</span><span class="o">.</span><span class="na">requestedSession</span><span class="o">;</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<ul>
+  <li>【3】获取sessionId，SpringSession对于sessionId获取的两种策略，一种从Cookie中获取(<code class="highlighter-rouge">CookieHttpSessionIdResolver</code>)，也是默认方式.另一种从Header中获取<code class="highlighter-rouge">HeaderHttpSessionIdResolver</code>,顺便说下，如果要还一种解析方式，需要预先配置下.
+    <ul>
+      <li>用户代码如下:
+        <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="rouge-code"><pre> <span class="nd">@Configuration</span>
+ <span class="kd">public</span> <span class="kd">class</span> <span class="nc">SessionIdResolverConfig</span> <span class="o">{</span>
+         <span class="nd">@Bean</span>
+         <span class="kd">public</span> <span class="nc">HttpSessionIdResolver</span> <span class="nf">httpSessionIdResolver</span><span class="o">()</span> <span class="o">{</span>
+                 <span class="k">return</span> <span class="nc">HeaderHttpSessionIdResolver</span><span class="o">.</span><span class="na">xAuthToken</span><span class="o">();</span>
+         <span class="o">}</span>
+ <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>        </div>
+        <p>接着说<code class="highlighter-rouge">resolveSessionIds</code>,从<code class="highlighter-rouge">CookieHttpSessionIdResolver#resolveSessionIds</code>方法进去，内部有个<code class="highlighter-rouge">readCookieValues</code>,	直接从request中获取cookies然后循环，找到名称是<code class="highlighter-rouge">SESSION</code>，默认进行Base64解码，最后将sessionId放入列表中。</p>
+
+        <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+</pre></td><td class="rouge-code"><pre>     <span class="c1">//DefaultCookieSerializer.java</span>
+     <span class="nd">@Override</span>
+     <span class="kd">public</span> <span class="nc">List</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;</span> <span class="nf">readCookieValues</span><span class="o">(</span><span class="nc">HttpServletRequest</span> <span class="n">request</span><span class="o">)</span> <span class="o">{</span>
+         <span class="nc">Cookie</span><span class="o">[]</span> <span class="n">cookies</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="na">getCookies</span><span class="o">();</span>
+         <span class="nc">List</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;</span> <span class="n">matchingCookieValues</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ArrayList</span><span class="o">&lt;&gt;();</span>
+         <span class="k">if</span> <span class="o">(</span><span class="n">cookies</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+             <span class="k">for</span> <span class="o">(</span><span class="nc">Cookie</span> <span class="n">cookie</span> <span class="o">:</span> <span class="n">cookies</span><span class="o">)</span> <span class="o">{</span>
+                 <span class="k">if</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">cookieName</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">cookie</span><span class="o">.</span><span class="na">getName</span><span class="o">()))</span> <span class="o">{</span>
+                     <span class="nc">String</span> <span class="n">sessionId</span> <span class="o">=</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">useBase64Encoding</span>
+                             <span class="o">?</span> <span class="n">base64Decode</span><span class="o">(</span><span class="n">cookie</span><span class="o">.</span><span class="na">getValue</span><span class="o">())</span>
+                             <span class="o">:</span> <span class="n">cookie</span><span class="o">.</span><span class="na">getValue</span><span class="o">());</span>
+                     <span class="k">if</span> <span class="o">(</span><span class="n">sessionId</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+                         <span class="k">continue</span><span class="o">;</span>
+                     <span class="o">}</span>
+                     <span class="c1">//TODO:jvmRoute不知道是什么。后期研究下</span>
+                     <span class="k">if</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">jvmRoute</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">sessionId</span><span class="o">.</span><span class="na">endsWith</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">jvmRoute</span><span class="o">))</span> <span class="o">{</span>
+                         <span class="n">sessionId</span> <span class="o">=</span> <span class="n">sessionId</span><span class="o">.</span><span class="na">substring</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span>
+                                 <span class="n">sessionId</span><span class="o">.</span><span class="na">length</span><span class="o">()</span> <span class="o">-</span> <span class="k">this</span><span class="o">.</span><span class="na">jvmRoute</span><span class="o">.</span><span class="na">length</span><span class="o">());</span>
+                     <span class="o">}</span>
+                     <span class="n">matchingCookieValues</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">sessionId</span><span class="o">);</span>
+                 <span class="o">}</span>
+             <span class="o">}</span>
+         <span class="o">}</span>
+         <span class="k">return</span> <span class="n">matchingCookieValues</span><span class="o">;</span>
+     <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>        </div>
+      </li>
+    </ul>
+  </li>
+  <li>【5-15】循环从<code class="highlighter-rouge">httpSessionIdResolver</code>解析出来的sessionId列表，并且根据sessionId从存储(这里是Redis)中获取Session。顺序是RedisOperationsSessionRepository#findById -&gt; RedisOperationsSessionRepository#getSession
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+</pre></td><td class="rouge-code"><pre>	<span class="kd">private</span> <span class="nc">RedisSession</span> <span class="nf">getSession</span><span class="o">(</span><span class="nc">String</span> <span class="n">id</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">allowExpired</span><span class="o">)</span> <span class="o">{</span>
+      <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">Object</span><span class="o">,</span> <span class="nc">Object</span><span class="o">&gt;</span> <span class="n">entries</span> <span class="o">=</span> <span class="n">getSessionBoundHashOperations</span><span class="o">(</span><span class="n">id</span><span class="o">).</span><span class="na">entries</span><span class="o">();</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">entries</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">())</span> <span class="o">{</span>
+          <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+      <span class="o">}</span>
+      <span class="nc">MapSession</span> <span class="n">loaded</span> <span class="o">=</span> <span class="n">loadSession</span><span class="o">(</span><span class="n">id</span><span class="o">,</span> <span class="n">entries</span><span class="o">);</span>
+      <span class="k">if</span> <span class="o">(!</span><span class="n">allowExpired</span> <span class="o">&amp;&amp;</span> <span class="n">loaded</span><span class="o">.</span><span class="na">isExpired</span><span class="o">())</span> <span class="o">{</span>
+          <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+      <span class="o">}</span>
+      <span class="nc">RedisSession</span> <span class="n">result</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">RedisSession</span><span class="o">(</span><span class="n">loaded</span><span class="o">);</span>
+      <span class="n">result</span><span class="o">.</span><span class="na">originalLastAccessTime</span> <span class="o">=</span> <span class="n">loaded</span><span class="o">.</span><span class="na">getLastAccessedTime</span><span class="o">();</span>
+      <span class="k">return</span> <span class="n">result</span><span class="o">;</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+    <ul>
+      <li>【2】从redis根据sessionId读取信息</li>
+      <li>【6】本质上就是将读取出来的Map结构转换为自定义的<code class="highlighter-rouge">MapSession</code></li>
+    </ul>
+  </li>
+</ul>
+:ET

@@ -1,0 +1,103 @@
+I"�<p>客户端的读事件注册是紧接着【4.2.Netty源码:NioSocketChannel的线程分配和selector注册】后面</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+</pre></td><td class="rouge-code"><pre><span class="c1">//AbstractChanne.java</span>
+ <span class="kd">private</span> <span class="kt">void</span> <span class="nf">register0</span><span class="o">(</span><span class="nc">ChannelPromise</span> <span class="n">promise</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">try</span> <span class="o">{</span>
+          <span class="o">...</span>
+          <span class="c1">//调用jdk底层 接口是否绑定了。当服务端启动的时候，isActive()返回false</span>
+          <span class="k">if</span> <span class="o">(</span><span class="n">isActive</span><span class="o">())</span> <span class="o">{</span>
+              <span class="k">if</span> <span class="o">(</span><span class="n">firstRegistration</span><span class="o">)</span> <span class="o">{</span>
+                  <span class="n">pipeline</span><span class="o">.</span><span class="na">fireChannelActive</span><span class="o">();</span>
+              <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">config</span><span class="o">().</span><span class="na">isAutoRead</span><span class="o">())</span> <span class="o">{</span>
+                  <span class="n">beginRead</span><span class="o">();</span>
+              <span class="o">}</span>
+          <span class="o">}</span>
+      <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Throwable</span> <span class="n">t</span><span class="o">)</span> <span class="o">{</span>
+          <span class="c1">// Close the channel directly to avoid FD leak.</span>
+          <span class="n">closeForcibly</span><span class="o">();</span>
+          <span class="n">closeFuture</span><span class="o">.</span><span class="na">setClosed</span><span class="o">();</span>
+          <span class="n">safeSetFailure</span><span class="o">(</span><span class="n">promise</span><span class="o">,</span> <span class="n">t</span><span class="o">);</span>
+      <span class="o">}</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<ul>
+  <li>
+    <p>【8】扩展说明，如下</p>
+
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class="rouge-code"><pre>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">channelActive</span><span class="o">(</span><span class="nc">ChannelHandlerContext</span> <span class="n">ctx</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+      <span class="c1">//向下传播事件了</span>
+      <span class="n">ctx</span><span class="o">.</span><span class="na">fireChannelActive</span><span class="o">();</span>
+      <span class="n">readIfIsAutoRead</span><span class="o">();</span>
+    <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+    <ul>
+      <li>
+        <p>【4】继续深入会发现是从tail节点往前传播，再到客户端连接（<code class="highlighter-rouge">NioSocketChannel</code>）的<code class="highlighter-rouge">unsafe.beginRead()</code>，最终实现方法是在<code class="highlighter-rouge">AbstractNioChannel#doBeginRead</code></p>
+
+        <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+</pre></td><td class="rouge-code"><pre>   <span class="c1">//AbstractNioChannel.java</span>
+   <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">doBeginRead</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+    <span class="kd">final</span> <span class="nc">SelectionKey</span> <span class="n">selectionKey</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">selectionKey</span><span class="o">;</span>
+    <span class="k">if</span> <span class="o">(!</span><span class="n">selectionKey</span><span class="o">.</span><span class="na">isValid</span><span class="o">())</span> <span class="o">{</span>
+        <span class="k">return</span><span class="o">;</span>
+    <span class="o">}</span>
+  
+    <span class="n">readPending</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+  
+    <span class="kd">final</span> <span class="kt">int</span> <span class="n">interestOps</span> <span class="o">=</span> <span class="n">selectionKey</span><span class="o">.</span><span class="na">interestOps</span><span class="o">();</span>
+    <span class="k">if</span> <span class="o">((</span><span class="n">interestOps</span> <span class="o">&amp;</span> <span class="n">readInterestOp</span><span class="o">)</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">selectionKey</span><span class="o">.</span><span class="na">interestOps</span><span class="o">(</span><span class="n">interestOps</span> <span class="o">|</span> <span class="n">readInterestOp</span><span class="o">);</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>        </div>
+        <p>将读事件绑定到selector上。下次如果有数据进来就可以进行数据读写了。此时的<code class="highlighter-rouge">interestOps</code>是读事件。再构造NioSocketChannel的时候默认定义的.</p>
+        <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre>  <span class="kd">protected</span> <span class="nf">AbstractNioByteChannel</span><span class="o">(</span><span class="nc">Channel</span> <span class="n">parent</span><span class="o">,</span> <span class="nc">SelectableChannel</span> <span class="n">ch</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kd">super</span><span class="o">(</span><span class="n">parent</span><span class="o">,</span> <span class="n">ch</span><span class="o">,</span> <span class="nc">SelectionKey</span><span class="o">.</span><span class="na">OP_READ</span><span class="o">);</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>        </div>
+      </li>
+    </ul>
+  </li>
+</ul>
+:ET

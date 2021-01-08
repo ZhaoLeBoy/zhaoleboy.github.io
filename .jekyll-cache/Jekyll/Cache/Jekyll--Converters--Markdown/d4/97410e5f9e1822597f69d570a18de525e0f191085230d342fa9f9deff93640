@@ -1,0 +1,83 @@
+I"�<p>NioSocketChannel是基于NIO选择器的实现。</p>
+
+<p>NioSocketChannel继承关系(有删减)
+<img src="/img/netty/4-1-1/1.jpg" alt="IMAGE" /></p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class="rouge-code"><pre><span class="kd">public</span> <span class="nf">NioSocketChannel</span><span class="o">(</span><span class="nc">Channel</span> <span class="n">parent</span><span class="o">,</span> <span class="nc">SocketChannel</span> <span class="n">socket</span><span class="o">)</span> <span class="o">{</span>
+  <span class="kd">super</span><span class="o">(</span><span class="n">parent</span><span class="o">,</span> <span class="n">socket</span><span class="o">);</span>
+  <span class="n">config</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">NioSocketChannelConfig</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">socket</span><span class="o">.</span><span class="na">socket</span><span class="o">());</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<ul>
+  <li>config中禁止了Nagle算法(Nagle算法:通过减少必须发送包的个数来增加网络软件系统的效率。)</li>
+</ul>
+
+<p>初始化初始化的时候根据上图的循序依次调用父类。</p>
+<ul>
+  <li>AbstractNioByteChannel
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre><span class="kd">protected</span> <span class="nf">AbstractNioByteChannel</span><span class="o">(</span><span class="nc">Channel</span> <span class="n">parent</span><span class="o">,</span> <span class="nc">SelectableChannel</span> <span class="n">ch</span><span class="o">)</span> <span class="o">{</span>
+<span class="kd">super</span><span class="o">(</span><span class="n">parent</span><span class="o">,</span> <span class="n">ch</span><span class="o">,</span> <span class="nc">SelectionKey</span><span class="o">.</span><span class="na">OP_READ</span><span class="o">);</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+  </li>
+  <li>
+    <p>【2】新连接接入，<code class="highlighter-rouge">SelectionKey.OP_READ</code> 读事件</p>
+  </li>
+  <li>AbstractNioChannel
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class="rouge-code"><pre><span class="kd">protected</span> <span class="nf">AbstractNioChannel</span><span class="o">(</span><span class="nc">Channel</span> <span class="n">parent</span><span class="o">,</span> <span class="nc">SelectableChannel</span> <span class="n">ch</span><span class="o">,</span> <span class="kt">int</span> <span class="n">readInterestOp</span><span class="o">)</span> <span class="o">{</span>
+<span class="kd">super</span><span class="o">(</span><span class="n">parent</span><span class="o">);</span>
+<span class="k">this</span><span class="o">.</span><span class="na">ch</span> <span class="o">=</span> <span class="n">ch</span><span class="o">;</span>
+<span class="k">this</span><span class="o">.</span><span class="na">readInterestOp</span> <span class="o">=</span> <span class="n">readInterestOp</span><span class="o">;</span>
+<span class="o">...</span>
+    <span class="n">ch</span><span class="o">.</span><span class="na">configureBlocking</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span>
+<span class="o">...</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+    <ul>
+      <li>【3】客户端的channel，jdk底层产生的channel<code class="highlighter-rouge">ServerSocketChannel.accpet()</code></li>
+      <li>【4】新连接接入的话,事件就是OP_READ</li>
+      <li>【6】设置非堵塞</li>
+    </ul>
+  </li>
+  <li>AbstractChannel
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre></td><td class="rouge-code"><pre><span class="kd">protected</span> <span class="nf">AbstractChannel</span><span class="o">(</span><span class="nc">Channel</span> <span class="n">parent</span><span class="o">)</span> <span class="o">{</span>
+<span class="k">this</span><span class="o">.</span><span class="na">parent</span> <span class="o">=</span> <span class="n">parent</span><span class="o">;</span>
+<span class="n">id</span> <span class="o">=</span> <span class="n">newId</span><span class="o">();</span>
+<span class="n">unsafe</span> <span class="o">=</span> <span class="n">newUnsafe</span><span class="o">();</span>
+<span class="n">pipeline</span> <span class="o">=</span> <span class="n">newChannelPipeline</span><span class="o">();</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+    <ul>
+      <li>【2】创建这个客户端channel的服务端channel<code class="highlighter-rouge">NioServerSocketChannel</code></li>
+    </ul>
+  </li>
+</ul>
+
+<blockquote>
+  <p>大部分初始化的方式跟NioServerSocketChannel类似</p>
+</blockquote>
+
+<p><img src="/img/netty/4-1-1/2.jpg" alt="IMAGE" /></p>
+:ET

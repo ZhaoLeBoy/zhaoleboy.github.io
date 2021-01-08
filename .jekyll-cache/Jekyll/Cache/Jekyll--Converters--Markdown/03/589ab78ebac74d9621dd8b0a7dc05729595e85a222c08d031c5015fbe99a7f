@@ -1,0 +1,8 @@
+I"4<h3 id="概述">概述</h3>
+<p>ThreadPerTaskExecutor 字面意思是每个线程的任务执行器，是<code class="highlighter-rouge">java.util.concurrent</code>包下的<code class="highlighter-rouge">Executor</code>的一个实现类，<code class="highlighter-rouge">Executor</code>主要用于执行提交的Runnable任务，实现了任务提交和任务执行进行的解耦，所以可以大概猜到<code class="highlighter-rouge">ThreadPerTaskExecutor</code>跟线程执行任务有关。</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class="rouge-code"><pre><span class="c1">//MultithreadEventExecutorGroup.java</span>
+<span class="n">executor</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ThreadPerTaskExecutor</span><span class="o">(</span><span class="n">newDefaultThreadFactory</span><span class="o">());</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+:ET

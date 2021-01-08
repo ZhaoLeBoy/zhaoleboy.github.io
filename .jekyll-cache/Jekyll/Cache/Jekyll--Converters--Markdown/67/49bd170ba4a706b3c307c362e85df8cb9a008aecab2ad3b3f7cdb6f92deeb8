@@ -1,0 +1,343 @@
+I"�'<h4 id="一环境配置">一.环境配置</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>名称</th>
+      <th>版本号</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>CentOS</td>
+      <td>7.x</td>
+    </tr>
+    <tr>
+      <td>keepalived</td>
+      <td>2.0.2</td>
+    </tr>
+    <tr>
+      <td>Nginx</td>
+      <td>1.16.0</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>使用LVS(DR模式)，Keepalived主从模式进行搭建，具体配置如下</p>
+
+<p><img src="/img/nginx/lvs_nginx_keepalived/1.png" alt="1" /></p>
+
+<h3 id="二安装nginx">二.安装Nginx</h3>
+<p>现在两台RS(Real Server)上安装Nginx.</p>
+
+<p><a href="http://jinlipool.com/2020/02/17/nginx/">Nginx基本安装</a></p>
+
+<h3 id="三配置网卡规则和路由">三.配置网卡规则和路由</h3>
+<p>安装完Nginx后紧接着对两台RS进行配置。由于是基于LVS的DR模式</p>
+
+<h4 id="配置lo网卡">配置lo网卡</h4>
+
+<blockquote>
+  <p>cd /etc/sysconf/network-scripts/ <br />
+cp ifcfg-lo ifcfg-lo:v1</p>
+</blockquote>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class="rouge-code"><pre><span class="c">#名称</span>
+<span class="nv">DEVICE</span><span class="o">=</span>lo:v1
+<span class="c">#虚拟ip</span>
+<span class="nv">IPADDR</span><span class="o">=</span>192.168.1.100
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h4 id="配置网卡规则抑制arp">配置网卡规则(抑制ARP)</h4>
+
+<p>继续在两台RS(Real Server)上进行配置</p>
+
+<p><strong>配置arp抑制规则</strong></p>
+<blockquote>
+  <p>vi /etc/sysctl.conf</p>
+</blockquote>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre></td><td class="rouge-code"><pre>net.ipv4.conf.all.arp_ignore <span class="o">=</span> 1
+net.ipv4.conf.default.arp_ignore <span class="o">=</span> 1
+net.ipv4.conf.lo.arp_ignore <span class="o">=</span> 1
+net.ipv4.conf.all.arp_announce <span class="o">=</span> 2
+net.ipv4.conf.default.arp_announce <span class="o">=</span> 2
+net.ipv4.conf.lo.arp_announce <span class="o">=</span> 2
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p><strong>刷新网卡</strong></p>
+<blockquote>
+  <p>sysctl -p</p>
+</blockquote>
+
+<p><strong>添加路由，并且保存到自启动文件</strong></p>
+<blockquote>
+  <p>echo “route add -host 192.168.252.100 dev lo:v1” » /etc/rc.local</p>
+</blockquote>
+
+<h3 id="四安装配置keepalived">四.安装&amp;配置keepalived</h3>
+
+<p>分别在<code class="highlighter-rouge">161</code>，<code class="highlighter-rouge">162</code>两台机器上安装和配置Keepalived</p>
+
+<h4 id="安装keepalived">安装Keepalived</h4>
+<p><a href="http://jinlipool.com/2020/02/17/keepalived">Keepalived基本安装</a></p>
+
+<h4 id="配置keepalivedconf">配置Keepalived.conf</h4>
+
+<p>安装完毕后，分别对主从RS中的Keepalived进行配置。进入<code class="highlighter-rouge">/etc/keepalived/</code>修改配置文件<code class="highlighter-rouge">keepalived.conf</code></p>
+
+<p><strong>主节点配置</strong></p>
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+</pre></td><td class="rouge-code"><pre>global_defs <span class="o">{</span>
+   router_id LVS_161
+<span class="o">}</span>
+<span class="c">#配置主节点</span>
+vrrp_instance VI_1 <span class="o">{</span>
+    state MASTER
+    interface ens33
+    virtual_router_id 61
+    priority 100
+    advert_int 1
+    authentication <span class="o">{</span>
+        auth_type PASS
+        auth_pass 1111
+    <span class="o">}</span>
+    virtual_ipaddress <span class="o">{</span>
+        192.168.1.100
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c">#LVS配置</span>
+virtual_server 192.168.1.100 80 <span class="o">{</span>
+    <span class="c">#健康检查的时间</span>
+    delay_loop 6
+    <span class="c">#负载均衡算法</span>
+    lb_algo rr
+    <span class="c">#LVS模式</span>
+    lb_kind DR
+    persistence_timeout 5
+    protocol TCP
+
+    real_server 192.168.1.151 80 <span class="o">{</span>
+        weight 1
+        TCP_CHECK <span class="o">{</span>
+          <span class="c">#检查80接口</span>
+          connect_port 80
+          <span class="c">#超时时间 2</span>
+          connect_timeout 2
+          <span class="c">#重试次数 2</span>
+          nb_get_retry 2
+          <span class="c">#间隔时间 3s</span>
+          delay_before_retry 3
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    real_server 192.168.1.152 80 <span class="o">{</span>
+       ...同上151配置
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p><strong>备用节点配置</strong></p>
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+</pre></td><td class="rouge-code"><pre>global_defs <span class="o">{</span>
+   router_id LVS_161
+<span class="o">}</span>
+<span class="c">#配置主节点</span>
+vrrp_instance VI_1 <span class="o">{</span>
+    state MASTER
+    interface ens33
+    virtual_router_id 61
+    priority 100
+    advert_int 1
+    authentication <span class="o">{</span>
+        auth_type PASS
+        auth_pass 1111
+    <span class="o">}</span>
+    virtual_ipaddress <span class="o">{</span>
+        192.168.1.100
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c">#LVS配置</span>
+vrrp_instance VI_1 <span class="o">{</span>
+  <span class="c">#同主节点配置</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h4 id="重启keepalived即可">重启keepalived即可</h4>
+
+<p>重启下keepalived就可以生效了</p>
+<blockquote>
+  <p>systemctl restart keepalived.service</p>
+</blockquote>
+
+<h3 id="五安装使用ipvsadm">五.安装&amp;使用ipvsadm</h3>
+
+<p>在两台部署Keepalived的主备节点上进行操作</p>
+
+<h4 id="安装ipvadmin">安装ipvadmin</h4>
+<blockquote>
+  <p>yum install ipvsadm</p>
+</blockquote>
+
+<p>ipvsadm 是Linux虚拟服务器的管理命令。是用于设置、维护和检查Linux内核中虚拟服务器列表的命令</p>
+
+<h4 id="添加新的虚拟服务">添加新的虚拟服务</h4>
+<blockquote>
+  <p>-A 新增一个虚拟服务，
+-t 表明这是一个tcp服务 
+-s 调度模式 rr 轮循
+ipvsadm -A -t 192.168.1.100:80 -s rr</p>
+</blockquote>
+
+<h4 id="添加真实服务器">添加真实服务器</h4>
+
+<p>在内核虚拟服务器表的一条记录里添加新的真实服务器记录。也就是在一个虚拟服务器中增加一台新的真实服务器。</p>
+
+<p>在主服务器添加如下命令</p>
+<blockquote>
+  <p>-a 真实服务
+-t 表明是个tcp服务 
+-r 真实服务地址 
+-g dr模式 可以不写，默认的
+ipvsadm -a -t 192.168.1.100:80 -r 192.168.1.151:80 -g 
+ipvsadm -a -t 192.168.1.100:80 -r 192.168.1.152:80 -g</p>
+</blockquote>
+
+<h4 id="测试">测试</h4>
+
+<p>为了方便测试，需要将持久化时间调低</p>
+<blockquote>
+  <p>-E 编辑 <br />
+-p 持久化 <br />
+ipvsadm -E -t 192.168.1.100:80 -s rr -p 5 <br />
+ipvsadm –set 1 1 1</p>
+</blockquote>
+
+<p>第一次访问
+<img src="/img/nginx/lvs_nginx_keepalived/2.png" alt="2" /></p>
+
+<p>隔个1s再刷一次，说明负载均衡没问题，轮循的方式。
+<img src="/img/nginx/lvs_nginx_keepalived/3.png" alt="3" /></p>
+
+<p>关闭<code class="highlighter-rouge">151</code>的nginx，无论怎么刷新，只会显示<code class="highlighter-rouge">152</code>的nginx
+<img src="/img/nginx/lvs_nginx_keepalived/4.png" alt="4" />
+<img src="/img/nginx/lvs_nginx_keepalived/5.png" alt="5" /></p>
+
+<p>最后，重新开启151的Nnginx,并且关闭主节点的keepalived</p>
+
+<p>进入到备用节点，使用<code class="highlighter-rouge">ip addr</code>查看ip信息，可以看到VIP已经漂移到备用节点
+<img src="/img/nginx/lvs_nginx_keepalived/6.png" alt="6" />
+页面是能正常访问的
+<img src="/img/nginx/lvs_nginx_keepalived/7.png" alt="7" />
+等重新启动主节点的keepalived，VIP还是会漂移回主节点上的。</p>
+
+<h3 id="基本扫盲">基本扫盲</h3>
+
+<p><strong>1. 什么是环回接口</strong>
+<a href="https://www.cnblogs.com/EasonJim/p/9996162.html">简单理解Linux的Loopback接口</a></p>
+
+<p><strong>2. 什么是ARP</strong>
+ARP(Address Resolution Protocol) 是一种解决地址问题的协议,以目标IP地址为线索，用来定位下一个应该接受数据分包的网络设备对应的MAC地址。只适用于IPV4网络。</p>
+
+<p><strong>3. 为什么将VIP配置在lo网卡</strong>
+首先是为了让RS能够处理地址是VIP的数据，在lo上配置vip能够接收到相关报并将结果返回给客户端。如果将VIP设置到出口网卡，会导致客户端的ARP request出现混乱。可能会影响到整个负载均衡</p>
+
+<p><strong>4. 为什么要抑制ARP</strong>
+用户发起请求，在请求前会发一个arp广播包。由于DIP和SIP都在同一个物理网络中，并且都设置了VIP。为了让整个请求只会发送到DIP上。必须让其他SIP不能响应这个请求发出的ARP请求。</p>
+
+<p><strong>5. arp规则说明</strong></p>
+<ul>
+  <li>
+    <p>arp-ignore:ARP响应级别（处理请求）
+0：主要本机配置IP，就能响应请求。
+1：请求的目标地址到达对应的网络接口，才会响应请求。</p>
+  </li>
+  <li>
+    <p>arp-announce:ARP通告行为（返回响应）**
+0：本机上任何网络接口都向外通告，所有的网卡都能接受到通告。
+1：尽可能避免本网卡与不匹配的目标进行通告。
+2：只在本网卡通告。</p>
+  </li>
+</ul>
+:ET

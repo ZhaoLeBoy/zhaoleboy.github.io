@@ -1,0 +1,25 @@
+I"?<h4 id="开头">开头</h4>
+<p>最近在深入学习java锁有关的知识,关于这一类知识点，除了表面的概念还涉及到内部更深层次的实现以及原理。翻阅的无数资料，对这些资料进行比较和学习，记录下来一些重要的作为笔记和文章，时刻翻出来进行学习和加强记忆。</p>
+
+<h4 id="乐观锁">乐观锁</h4>
+<p><strong><a href="http://jinlipool.com/2019/10/15/spin-lock/">【乐观锁】</a></strong></p>
+
+<h4 id="悲观锁">悲观锁</h4>
+<h5 id="概念">概念</h5>
+<p>悲观锁认为自己在使用数据的时候一定会有其他线程来修改数据，因此获取数据的时候会先加锁，保证数据不会被其他线程修改</p>
+
+<h5 id="实现方式">实现方式</h5>
+<p>synchronized关键字和Lock的实现类，Lock锁的基本操作是通过乐观锁来实现，但是也会是线程堵塞时挂起。</p>
+
+<h5 id="使用场景">使用场景</h5>
+<p>悲观锁适合写多读少的场景。</p>
+
+<ul>
+  <li><strong><a href="http://jinlipool.com/2019/10/15/monitors/">【什么是管程】</a></strong></li>
+  <li><strong><a href="http://jinlipool.com/2019/10/15/synchronized/">【悲观锁-synchronized】</a></strong></li>
+  <li><strong><a href="http://jinlipool.com/2019/10/14/reetrantlock_lock1/">【1.ReetrantLock-加锁过程】</a></strong></li>
+  <li><strong><a href="http://jinlipool.com/2019/10/14/reetrantlock_lock2/">【2.ReentrantLock-独占锁】</a></strong></li>
+  <li><strong><a href="http://jinlipool.com/2019/10/14/reetrantlock_lock3/">【3.ReentrantLock-公平锁】</a></strong></li>
+</ul>
+
+:ET

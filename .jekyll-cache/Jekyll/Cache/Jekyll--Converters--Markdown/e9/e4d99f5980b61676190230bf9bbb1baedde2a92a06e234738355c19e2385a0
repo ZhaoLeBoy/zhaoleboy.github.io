@@ -1,0 +1,71 @@
+I"�<h3 id="概述">概述</h3>
+<p>ThreadPerTaskExecutor 字面意思是每个线程的任务执行器，是<code class="highlighter-rouge">java.util.concurrent</code>包下的<code class="highlighter-rouge">Executor</code>的一个实现类，<code class="highlighter-rouge">Executor</code>主要用于执行提交的Runnable任务，实现了任务提交和任务执行进行的解耦，所以可以大概猜到<code class="highlighter-rouge">ThreadPerTaskExecutor</code>跟线程执行任务有关。</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class="rouge-code"><pre><span class="c1">//MultithreadEventExecutorGroup.java</span>
+<span class="n">executor</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ThreadPerTaskExecutor</span><span class="o">(</span><span class="n">newDefaultThreadFactory</span><span class="o">());</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h3 id="构建一个线程工厂">构建一个线程工厂</h3>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre><span class="kd">protected</span> <span class="nc">ThreadFactory</span> <span class="nf">newDefaultThreadFactory</span><span class="o">()</span> <span class="o">{</span>
+  <span class="k">return</span> <span class="k">new</span> <span class="nf">DefaultThreadFactory</span><span class="o">(</span><span class="n">getClass</span><span class="o">());</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>生成一个默认的线程工厂，传入的是当前类的对象,<code class="highlighter-rouge">DefaultThreadFactory</code>是ThreadFactory的一个实现。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class="rouge-code"><pre><span class="c1">//DefaultThreadFactory.java</span>
+<span class="kd">public</span> <span class="nf">DefaultThreadFactory</span><span class="o">(</span><span class="nc">String</span> <span class="n">poolName</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">daemon</span><span class="o">,</span> <span class="kt">int</span> <span class="n">priority</span><span class="o">,</span> <span class="nc">ThreadGroup</span> <span class="n">threadGroup</span><span class="o">)</span> <span class="o">{</span>
+  <span class="o">...</span>
+  <span class="n">prefix</span> <span class="o">=</span> <span class="n">poolName</span> <span class="o">+</span> <span class="sc">'-'</span> <span class="o">+</span> <span class="n">poolId</span><span class="o">.</span><span class="na">incrementAndGet</span><span class="o">()</span> <span class="o">+</span> <span class="sc">'-'</span><span class="o">;</span>
+  <span class="k">this</span><span class="o">.</span><span class="na">daemon</span> <span class="o">=</span> <span class="n">daemon</span><span class="o">;</span>
+  <span class="k">this</span><span class="o">.</span><span class="na">priority</span> <span class="o">=</span> <span class="n">priority</span><span class="o">;</span>
+  <span class="k">this</span><span class="o">.</span><span class="na">threadGroup</span> <span class="o">=</span> <span class="n">threadGroup</span><span class="o">;</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<ul>
+  <li>【4】给这个工厂定义一个唯一名字前缀，<code class="highlighter-rouge">eventLoopGroup_</code> +自增器，在<code class="highlighter-rouge">DefaultThreadFactory</code>类中有具体方法来生成这个<code class="highlighter-rouge">poolName</code>可以自行查看。</li>
+</ul>
+
+<h3 id="线程执行器">线程执行器</h3>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre></td><td class="rouge-code"><pre><span class="c1">//ThreadPerTaskExecutor.java</span>
+<span class="kd">private</span> <span class="kd">final</span> <span class="nc">ThreadFactory</span> <span class="n">threadFactory</span><span class="o">;</span>
+<span class="kd">public</span>  <span class="nf">ThreadPerTaskExecutor</span><span class="o">(</span><span class="nc">ThreadFactory</span> <span class="n">threadFactory</span><span class="o">)</span> <span class="o">{</span>
+  <span class="o">...</span> 
+  <span class="k">this</span><span class="o">.</span><span class="na">threadFactory</span> <span class="o">=</span> <span class="n">threadFactory</span><span class="o">;</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>【4】构造方法就干一件事，给成员变量赋值</p>
+
+<p>由于<code class="highlighter-rouge">ThreadPerTaskExecutor</code>实现了<code class="highlighter-rouge">Executor</code>接口，它实现接口的<code class="highlighter-rouge">execute</code>方法</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class="rouge-code"><pre><span class="c1">//ThreadPerTaskExecutor.java </span>
+<span class="nd">@Override</span>
+<span class="kd">public</span> <span class="kt">void</span> <span class="nf">execute</span><span class="o">(</span><span class="nc">Runnable</span> <span class="n">command</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">threadFactory</span><span class="o">.</span><span class="na">newThread</span><span class="o">(</span><span class="n">command</span><span class="o">).</span><span class="na">start</span><span class="o">();</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<ul>
+  <li>【3】使用了代理模式，由这个类里面的成员变量<code class="highlighter-rouge">threadFactory</code>进行线程创建和执行。</li>
+</ul>
+:ET

@@ -1,0 +1,85 @@
+I"�<p>在Channel创建的时候Pipeline被创建出来,一个Channel对应一个Pipeline。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+</pre></td><td class="rouge-code"><pre><span class="c1">//AbstractChannel.java-&gt;DefaultChannelPipeline.java</span>
+<span class="kd">protected</span> <span class="nf">DefaultChannelPipeline</span><span class="o">(</span><span class="nc">Channel</span> <span class="n">channel</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">this</span><span class="o">.</span><span class="na">channel</span> <span class="o">=</span> <span class="nc">ObjectUtil</span><span class="o">.</span><span class="na">checkNotNull</span><span class="o">(</span><span class="n">channel</span><span class="o">,</span> <span class="s">"channel"</span><span class="o">);</span>
+  <span class="n">succeededFuture</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">SucceededChannelFuture</span><span class="o">(</span><span class="n">channel</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+  <span class="n">voidPromise</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">VoidChannelPromise</span><span class="o">(</span><span class="n">channel</span><span class="o">,</span> <span class="kc">true</span><span class="o">);</span>
+
+  <span class="n">tail</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">TailContext</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+  <span class="n">head</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">HeadContext</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+
+  <span class="n">head</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="n">tail</span><span class="o">;</span>
+  <span class="n">tail</span><span class="o">.</span><span class="na">prev</span> <span class="o">=</span> <span class="n">head</span><span class="o">;</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>Pipeline是双向链表的结构。有两个节点</p>
+
+<p>共同继承的抽象类。有删减
+<img src="/img/netty/5-1/1.jpg" alt="IMAGE" /></p>
+
+<h3 id="tail">tail</h3>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre></td><td class="rouge-code"><pre><span class="c1">//AbstractChannelHandlerContext.java</span>
+<span class="nc">TailContext</span><span class="o">(</span><span class="nc">DefaultChannelPipeline</span> <span class="n">pipeline</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kd">super</span><span class="o">(</span><span class="n">pipeline</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="no">TAIL_NAME</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">false</span><span class="o">);</span>
+    <span class="n">setAddComplete</span><span class="o">();</span>
+<span class="o">}</span>
+
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h3 id="head">head</h3>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre></td><td class="rouge-code"><pre><span class="c1">//AbstractChannelHandlerContext.java</span>
+<span class="nc">HeadContext</span><span class="o">(</span><span class="nc">DefaultChannelPipeline</span> <span class="n">pipeline</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kd">super</span><span class="o">(</span><span class="n">pipeline</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="no">HEAD_NAME</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">true</span><span class="o">);</span>
+    <span class="n">unsafe</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="na">channel</span><span class="o">().</span><span class="na">unsafe</span><span class="o">();</span>
+    <span class="n">setAddComplete</span><span class="o">();</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="rouge-code"><pre><span class="c1">//AbstractChannelHandlerContext.java</span>
+<span class="nc">AbstractChannelHandlerContext</span><span class="o">(</span><span class="nc">DefaultChannelPipeline</span> <span class="n">pipeline</span><span class="o">,</span> <span class="nc">EventExecutor</span> <span class="n">executor</span><span class="o">,</span> <span class="nc">String</span> <span class="n">name</span><span class="o">,</span>
+                              <span class="kt">boolean</span> <span class="n">inbound</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">outbound</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">this</span><span class="o">.</span><span class="na">name</span> <span class="o">=</span> <span class="nc">ObjectUtil</span><span class="o">.</span><span class="na">checkNotNull</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="s">"name"</span><span class="o">);</span>
+  <span class="k">this</span><span class="o">.</span><span class="na">pipeline</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">;</span>
+  <span class="k">this</span><span class="o">.</span><span class="na">executor</span> <span class="o">=</span> <span class="n">executor</span><span class="o">;</span>
+  <span class="k">this</span><span class="o">.</span><span class="na">inbound</span> <span class="o">=</span> <span class="n">inbound</span><span class="o">;</span>
+  <span class="k">this</span><span class="o">.</span><span class="na">outbound</span> <span class="o">=</span> <span class="n">outbound</span><span class="o">;</span>
+  <span class="n">ordered</span> <span class="o">=</span> <span class="n">executor</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="n">executor</span> <span class="k">instanceof</span> <span class="nc">OrderedEventExecutor</span><span class="o">;</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>tail和head都是pipeline中的数据节点，它们用布尔值在父类构造函数中来标识是inbound还是outbound。</p>
+:ET

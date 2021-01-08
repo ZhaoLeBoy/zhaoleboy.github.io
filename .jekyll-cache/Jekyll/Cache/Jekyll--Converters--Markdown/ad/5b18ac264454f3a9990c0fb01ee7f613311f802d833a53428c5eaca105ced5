@@ -1,0 +1,7 @@
+I"�<h2 id="一nio相关">一.Nio相关</h2>
+<ul>
+  <li><a href="https://blog.csdn.net/skiof007/article/details/52873421">BIO与NIO、AIO的区别(这个容易理解)</a> 
+这篇文章很清楚的描述几种IO的区别，也很清楚说明了异步，同步，堵塞，非堵塞的基本概念</li>
+  <li><a href="http://jinlipool.com/2018/12/29/scalable-io-in-java">Scalable IO in Java》学习笔记</a></li>
+</ul>
+:ET

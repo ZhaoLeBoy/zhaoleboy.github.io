@@ -1,0 +1,5 @@
+I"�<h3 id="初始化并且注册一个服务端的channel">初始化并且注册一个服务端的Channel</h3>
+<blockquote>
+  <p>服务端的channel是通过反射创建出来的</p>
+</blockquote>
+:ET

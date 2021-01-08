@@ -1,0 +1,263 @@
+I"N;<p>参考慕课网<a href="https://coding.imooc.com/class/195.html">并发课程</a>做的笔记</p>
+
+<h3 id="不可变对象">不可变对象</h3>
+
+<ul>
+  <li>
+    <p>不可变的对象需要满足的条件</p>
+
+    <ol>
+      <li>对象创建以后期状态就不能改变。</li>
+      <li>对象所有域都是final类型</li>
+      <li>对象是正确创建的(对象创建期间，this引用没有逸出)</li>
+    </ol>
+  </li>
+  <li>
+    <p>创建不可变对象的方式（参考String类型）</p>
+
+    <ol>
+      <li>将类声明成final类型，使其不可以被继承</li>
+      <li>将所有的成员设置成私有的，使其他的类和对象不能直接访问这些成员
+  对变量不提供set方法</li>
+      <li>将所有可变的成员声明为final，这样只能对他们赋值一次</li>
+      <li>通过构造器初始化所有成员，进行深度拷贝</li>
+      <li>在get方法中，不直接返回对象本身，而是克隆对象，返回对象的拷贝</li>
+    </ol>
+  </li>
+  <li>
+    <p>final关键字：类、方法、变量</p>
+
+    <ol>
+      <li>修饰类：不能被继承（final类中的所有方法都会被隐式的声明为final方法）。</li>
+      <li>修饰方法：1、锁定方法不被继承类修改；2、提升效率（private方法被隐式修饰为final方法）。</li>
+      <li>修饰变量：基本数据类型变量（初始化之后不能修改）、引用类型变量（初始化之后不能再修改其引用）。</li>
+    </ol>
+  </li>
+  <li>
+    <p>除了final 还有其他可以定义不可变的方法</p>
+
+    <ol>
+      <li>
+        <p>Collections.unmodifiabnleXXX:Collection,List,Set,Map…</p>
+      </li>
+      <li>
+        <p>Guava:ImmutableXXX: Collection,List,Set,Map…</p>
+      </li>
+    </ol>
+  </li>
+</ul>
+
+<h3 id="线程封闭">线程封闭</h3>
+<p>把对象封装到一个线程里，只有这个线程能看到这个对象</p>
+
+<ul>
+  <li>实现线程封闭
+    <ol>
+      <li>Ad-hoc 线程封闭，程序控制实现 最糟糕</li>
+      <li>堆栈封闭:局部变量，无并发问题</li>
+      <li>ThreadLocal线程封闭:特别好的封闭方法(可以看下源码)</li>
+    </ol>
+  </li>
+</ul>
+
+<h3 id="线程不安全类的写法">线程不安全类的写法</h3>
+<p>如果一个类的对象可以被多个线程访问，不做特殊的同步和并发处理，很容表现出异常</p>
+
+<ol>
+  <li>StringBuilder 线程不安全，StringBuffer线程安全
+原因:StringBuffer几乎所有的方法都加了synchronized关键字</li>
+  <li>SimpleDateFormat 在多线程共享使用的时候回抛出转换异常，应该在用堆栈封闭在每次调用方法的时候在方法里创建一个SimpleDateFormat,joda-time的DateTimeFormatter是线程安全的</li>
+  <li>ArrayList,HashMap,HashSet等Collections线程不安全</li>
+  <li>先检查再执行这种方式线程不安全</li>
+</ol>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class="rouge-code"><pre><span class="c1">// 因为可能不是非原子性(如果是在多线程下 要不然加锁 要不然操作是原子性)</span>
+<span class="k">if</span><span class="o">(</span><span class="n">condition</span><span class="o">(</span><span class="n">a</span><span class="o">)){</span>
+  <span class="n">handle</span><span class="o">(</span><span class="n">a</span><span class="o">);</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h3 id="线程安全-同步容器">线程安全-同步容器</h3>
+
+<p><strong>ArrayList -&gt; Vector,Stack</strong></p>
+
+<p><strong>HasMap -&gt; HashTable(key,value不能为null)</strong></p>
+
+<p><strong>Collections.synchronizedXXX(List,Set,Map)</strong></p>
+
+<p>但是使用同步容器的情况下 也不一定能做到线程安全（见代码）同步容器性能可能会稍差 而且不一定会保证性能安全,所以一般会使用并发容器来代替同步容器。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+</pre></td><td class="rouge-code"><pre><span class="cm">/**
+ * 并发测试
+ * 同步容器不一定线程安全
+ * @author gaowenfeng
+ */</span>
+<span class="nd">@Slf4j</span>
+<span class="nd">@NotThreadSafe</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">VectorExample2</span> <span class="o">{</span>
+
+    <span class="cm">/** 请求总数 */</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">int</span> <span class="n">clientTotal</span> <span class="o">=</span> <span class="mi">5000</span><span class="o">;</span>
+    <span class="cm">/** 同时并发执行的线程数 */</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">int</span> <span class="n">threadTotal</span> <span class="o">=</span> <span class="mi">50</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="nc">List</span><span class="o">&lt;</span><span class="nc">Integer</span><span class="o">&gt;</span> <span class="n">list</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Vector</span><span class="o">&lt;&gt;();</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="nc">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">InterruptedException</span> <span class="o">{</span>
+        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+            <span class="n">list</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">i</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="nc">Thread</span> <span class="n">thread1</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Thread</span><span class="o">(()</span> <span class="o">-&gt;</span> <span class="o">{</span>
+            <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+                <span class="n">list</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">i</span><span class="o">);</span>
+            <span class="o">}</span>
+        <span class="o">});</span>
+
+        <span class="nc">Thread</span> <span class="n">thread2</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Thread</span><span class="o">(()</span> <span class="o">-&gt;</span> <span class="o">{</span>
+            <span class="c1">// thread2想获取i=9的元素的时候，thread1将i=9的元素移除了，导致数组越界</span>
+            <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+                <span class="n">list</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">);</span>
+            <span class="o">}</span>
+        <span class="o">});</span>
+
+        <span class="n">thread1</span><span class="o">.</span><span class="na">start</span><span class="o">();</span>
+        <span class="n">thread2</span><span class="o">.</span><span class="na">start</span><span class="o">();</span>
+    <span class="o">}</span>
+
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+</pre></td><td class="rouge-code"><pre><span class="nd">@Slf4j</span>
+<span class="nd">@NotThreadSafe</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">VectorExample3</span> <span class="o">{</span>
+    <span class="c1">//java.util.ConcurrentModificationException</span>
+    <span class="c1">//对集合遍历的时候 有对集合进行增删的操作 会报异常</span>
+    <span class="c1">//如果要做remove操作 可以遍历的过程中先标记下 再遍历完后再操作</span>
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">test1</span><span class="o">(</span><span class="nc">Vector</span><span class="o">&lt;</span><span class="nc">Integer</span><span class="o">&gt;</span> <span class="n">v1</span><span class="o">)</span> <span class="o">{</span> <span class="c1">//foreach</span>
+        <span class="k">for</span> <span class="o">(</span><span class="nc">Integer</span> <span class="n">i</span> <span class="o">:</span> <span class="n">v1</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">i</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="mi">3</span><span class="o">))</span> <span class="o">{</span>
+                <span class="n">v1</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">i</span><span class="o">);</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="c1">//java.util.ConcurrentModificationException</span>
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">test2</span><span class="o">(</span><span class="nc">Vector</span><span class="o">&lt;</span><span class="nc">Integer</span><span class="o">&gt;</span> <span class="n">v1</span><span class="o">)</span> <span class="o">{</span> <span class="c1">//iterator</span>
+        <span class="nc">Iterator</span><span class="o">&lt;</span><span class="nc">Integer</span><span class="o">&gt;</span> <span class="n">iterator</span> <span class="o">=</span> <span class="n">v1</span><span class="o">.</span><span class="na">iterator</span><span class="o">();</span>
+        <span class="k">while</span> <span class="o">(</span><span class="n">iterator</span><span class="o">.</span><span class="na">hasNext</span><span class="o">())</span> <span class="o">{</span>
+            <span class="nc">Integer</span> <span class="n">i</span> <span class="o">=</span> <span class="n">iterator</span><span class="o">.</span><span class="na">next</span><span class="o">();</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">i</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="mi">3</span><span class="o">))</span> <span class="o">{</span>
+                <span class="n">v1</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">i</span><span class="o">);</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="c1">//success</span>
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">test3</span><span class="o">(</span><span class="nc">Vector</span><span class="o">&lt;</span><span class="nc">Integer</span><span class="o">&gt;</span> <span class="n">v1</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">v1</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">v1</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">).</span><span class="na">equals</span><span class="o">(</span><span class="mi">3</span><span class="o">))</span> <span class="o">{</span>
+                <span class="n">v1</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">i</span><span class="o">);</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+        <span class="n">log</span><span class="o">.</span><span class="na">info</span><span class="o">(</span><span class="s">"size--{}"</span><span class="o">,</span><span class="n">v1</span><span class="o">.</span><span class="na">size</span><span class="o">());</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="nc">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">Vector</span><span class="o">&lt;</span><span class="nc">Integer</span><span class="o">&gt;</span> <span class="n">vector</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Vector</span><span class="o">&lt;&gt;();</span>
+        <span class="n">vector</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="mi">1</span><span class="o">);</span>
+        <span class="n">vector</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="mi">2</span><span class="o">);</span>
+        <span class="n">vector</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="mi">3</span><span class="o">);</span>
+        <span class="n">test3</span><span class="o">(</span><span class="n">vector</span><span class="o">);</span>
+
+    <span class="o">}</span>
+<span class="o">}</span>
+
+</pre></td></tr></tbody></table></code></pre></div></div>
+:ET

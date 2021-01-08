@@ -1,0 +1,58 @@
+I"<<blockquote>
+  <p>参考【Netty源码:目录】中写的服务端启动代码</p>
+</blockquote>
+
+<blockquote>
+  <p>具体bind方法在<code class="highlighter-rouge">AbstractBootstrap</code>中实现的，表示新建一个Channel并且绑定它。删除了些后就这么多，后面围绕这块代码展开说</p>
+</blockquote>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+</pre></td><td class="rouge-code"><pre>  <span class="c1">//AbstractBootstrap.java</span>
+  <span class="kd">private</span> <span class="nc">ChannelFuture</span> <span class="nf">doBind</span><span class="o">(</span><span class="kd">final</span> <span class="nc">SocketAddress</span> <span class="n">localAddress</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">//初始化和注册</span>
+    <span class="kd">final</span> <span class="nc">ChannelFuture</span> <span class="n">regFuture</span> <span class="o">=</span> <span class="n">initAndRegister</span><span class="o">();</span>
+  
+    <span class="kd">final</span> <span class="nc">Channel</span> <span class="n">channel</span> <span class="o">=</span> <span class="n">regFuture</span><span class="o">.</span><span class="na">channel</span><span class="o">();</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">regFuture</span><span class="o">.</span><span class="na">cause</span><span class="o">()</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">regFuture</span><span class="o">;</span>
+    <span class="o">}</span>
+  
+    <span class="k">if</span> <span class="o">(</span><span class="n">regFuture</span><span class="o">.</span><span class="na">isDone</span><span class="o">())</span> <span class="o">{</span>
+        <span class="nc">ChannelPromise</span> <span class="n">promise</span> <span class="o">=</span> <span class="n">channel</span><span class="o">.</span><span class="na">newPromise</span><span class="o">();</span>
+        <span class="n">doBind0</span><span class="o">(</span><span class="n">regFuture</span><span class="o">,</span> <span class="n">channel</span><span class="o">,</span> <span class="n">localAddress</span><span class="o">,</span> <span class="n">promise</span><span class="o">);</span>
+        <span class="k">return</span> <span class="n">promise</span><span class="o">;</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+       <span class="o">...</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>*【4】初始化并且注册一个服务端的Channel</p>
+<ul>
+  <li><a href="http://jinlipool.com/2019/01/29/netty-2-1-1-server-channel-initialization/">【2-1-1.Netty源码:初始化服务端的channel】</a></li>
+  <li><a href="http://jinlipool.com/2019/01/29/netty-2-1-2-server-channel-register/">【2-1-2.Netty源码:注册服务端channel】</a></li>
+</ul>
+
+<p>*【13】执行具体绑定端口方法</p>
+<ul>
+  <li><a href="http://jinlipool.com/2019/01/29/netty-2-1-3-server-socket-bind.md/">【2-1-3.Netty源码:端口绑定】</a></li>
+</ul>
+
+:ET

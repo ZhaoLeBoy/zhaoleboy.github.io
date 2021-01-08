@@ -1,0 +1,2 @@
+I"�<p>接着上篇文章从<code class="highlighter-rouge">SessionRepositoryFilter.java</code>开始说起。之前说<code class="highlighter-rouge">SessionRepositoryFilter</code>过滤器将request和response封装成自己定义的类型。所以用户代码<code class="highlighter-rouge">request.getSession()</code>其实调用到的是<code class="highlighter-rouge">SessionRepositoryRequestWrapper</code>中已经被重写了的<code class="highlighter-rouge">getSession()</code>方法。</p>
+:ET

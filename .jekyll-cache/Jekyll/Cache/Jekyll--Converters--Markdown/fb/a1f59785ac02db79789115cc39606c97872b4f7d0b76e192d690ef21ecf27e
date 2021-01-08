@@ -1,0 +1,151 @@
+I"�%<p>端口绑定</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+</pre></td><td class="rouge-code"><pre><span class="c1">//AbstractBootstrap.java</span>
+ <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">doBind0</span><span class="o">(</span>
+        <span class="kd">final</span> <span class="nc">ChannelFuture</span> <span class="n">regFuture</span><span class="o">,</span> <span class="kd">final</span> <span class="nc">Channel</span> <span class="n">channel</span><span class="o">,</span>
+        <span class="kd">final</span> <span class="nc">SocketAddress</span> <span class="n">localAddress</span><span class="o">,</span> <span class="kd">final</span> <span class="nc">ChannelPromise</span> <span class="n">promise</span><span class="o">)</span> <span class="o">{</span>
+
+  <span class="c1">//把绑定接口的方法做成一个Task 扔到事件执行器 中执行</span>
+  <span class="n">channel</span><span class="o">.</span><span class="na">eventLoop</span><span class="o">().</span><span class="na">execute</span><span class="o">(</span><span class="k">new</span> <span class="nc">Runnable</span><span class="o">()</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">regFuture</span><span class="o">.</span><span class="na">isSuccess</span><span class="o">())</span> <span class="o">{</span>
+          <span class="n">channel</span><span class="o">.</span><span class="na">bind</span><span class="o">(</span><span class="n">localAddress</span><span class="o">,</span> <span class="n">promise</span><span class="o">).</span><span class="na">addListener</span><span class="o">(</span><span class="nc">ChannelFutureListener</span><span class="o">.</span><span class="na">CLOSE_ON_FAILURE</span><span class="o">);</span>
+      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+          <span class="n">promise</span><span class="o">.</span><span class="na">setFailure</span><span class="o">(</span><span class="n">regFuture</span><span class="o">.</span><span class="na">cause</span><span class="o">());</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">});</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<ul>
+  <li>【11】具体实现绑定方法在AbstractChannel#bind()
+    <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+</pre></td><td class="rouge-code"><pre> <span class="nd">@Override</span>
+<span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">bind</span><span class="o">(</span><span class="kd">final</span> <span class="nc">SocketAddress</span> <span class="n">localAddress</span><span class="o">,</span> <span class="kd">final</span> <span class="nc">ChannelPromise</span> <span class="n">promise</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">assertEventLoop</span><span class="o">();</span>
+  
+    <span class="k">if</span> <span class="o">(!</span><span class="n">promise</span><span class="o">.</span><span class="na">setUncancellable</span><span class="o">()</span> <span class="o">||</span> <span class="o">!</span><span class="n">ensureOpen</span><span class="o">(</span><span class="n">promise</span><span class="o">))</span> <span class="o">{</span>
+        <span class="k">return</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="o">...</span>
+    <span class="c1">//false</span>
+    <span class="kt">boolean</span> <span class="n">wasActive</span> <span class="o">=</span> <span class="n">isActive</span><span class="o">();</span>
+    <span class="k">try</span> <span class="o">{</span>
+        <span class="n">doBind</span><span class="o">(</span><span class="n">localAddress</span><span class="o">);</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Throwable</span> <span class="n">t</span><span class="o">)</span> <span class="o">{</span>
+      <span class="o">...</span>
+    <span class="o">}</span>
+  
+    <span class="k">if</span> <span class="o">(!</span><span class="n">wasActive</span> <span class="o">&amp;&amp;</span> <span class="n">isActive</span><span class="o">())</span> <span class="o">{</span>
+        <span class="n">invokeLater</span><span class="o">(</span><span class="k">new</span> <span class="nc">Runnable</span><span class="o">()</span> <span class="o">{</span>
+            <span class="nd">@Override</span>
+            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+                <span class="n">pipeline</span><span class="o">.</span><span class="na">fireChannelActive</span><span class="o">();</span>
+            <span class="o">}</span>
+        <span class="o">});</span>
+    <span class="o">}</span>
+  
+    <span class="n">safeSetSuccess</span><span class="o">(</span><span class="n">promise</span><span class="o">);</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+    <ul>
+      <li>【12】底层是使用了jdk底层进行绑定</li>
+      <li>【17】判断是否绑定了<code class="highlighter-rouge">isactive</code>方法也是用jdk地层实现的 <code class="highlighter-rouge">javaChannel().socket().isBound();</code></li>
+      <li>
+        <p>【21】完成绑定后发送事件</p>
+
+        <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class="rouge-code"><pre>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">channelActive</span><span class="o">(</span><span class="nc">ChannelHandlerContext</span> <span class="n">ctx</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+      <span class="n">ctx</span><span class="o">.</span><span class="na">fireChannelActive</span><span class="o">();</span>
+      <span class="n">readIfIsAutoRead</span><span class="o">();</span>
+  <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>        </div>
+        <ul>
+          <li>【2】传播channel激活事件</li>
+          <li>
+            <p>【3】层层的调用最终实现方式是在<code class="highlighter-rouge">AbstractNioChannel#doBeginRead</code></p>
+
+            <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+</pre></td><td class="rouge-code"><pre><span class="c1">//AbstractNioChannel.java</span>
+ <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">doBeginRead</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+  <span class="kd">final</span> <span class="nc">SelectionKey</span> <span class="n">selectionKey</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">selectionKey</span><span class="o">;</span>
+  <span class="k">if</span> <span class="o">(!</span><span class="n">selectionKey</span><span class="o">.</span><span class="na">isValid</span><span class="o">())</span> <span class="o">{</span>
+      <span class="k">return</span><span class="o">;</span>
+  <span class="o">}</span>
+  <span class="o">...</span>
+  
+  <span class="kd">final</span> <span class="kt">int</span> <span class="n">interestOps</span> <span class="o">=</span> <span class="n">selectionKey</span><span class="o">.</span><span class="na">interestOps</span><span class="o">();</span>
+  <span class="k">if</span> <span class="o">((</span><span class="n">interestOps</span> <span class="o">&amp;</span> <span class="n">readInterestOp</span><span class="o">)</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">selectionKey</span><span class="o">.</span><span class="na">interestOps</span><span class="o">(</span><span class="n">interestOps</span> <span class="o">|</span> <span class="n">readInterestOp</span><span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div>            </div>
+            <p>获取服务端channel注册到selector上的selectionKey，然后获取这个key的interestOps
+然后判断这个interestOps是否是0（SelectionKey.OP_ACCEPT，具体请见<a href="http://jinlipool.com/2019/01/27/netty-1-2-1-NioServerSocketChannel-construct/#2-%E7%BB%A7%E6%89%BF%E7%88%B6%E7%B1%BB%E8%AE%BE%E7%BD%AEchannel%E7%9B%B8%E5%85%B3%E9%85%8D%E7%BD%AE">【1-2-1.Netty源码:服务端NioServerSocketChanne构造方法】</a>）如果等于0 做个或操绑定Accept事件，再重新绑定到selectionKey。</p>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+:ET
