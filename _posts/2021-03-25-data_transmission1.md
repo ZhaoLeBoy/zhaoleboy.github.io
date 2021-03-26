@@ -147,5 +147,5 @@ PC本质上就是累加器，保存一个数，并和下一个数进行相加。
 
 
 ###  资料引用
-* [浮点数和定点数](~https://time.geekbang.org/column/article/98312~)
+* [建立数据通路（中）](https://time.geekbang.org/column/article/99092)
 * 《编码 隐匿在计算机软硬件背后的语言》第十四，十六章
